@@ -1,0 +1,13 @@
+{
+  "name": "eulenbach-dm-helfer",
+  "private": true,
+  "description": "Eulenbach DM-Helfer: Spielleiter-Werkzeug als einzelne HTML-Datei",
+  "scripts": {
+    "build": "python3 build.py",
+    "check": "bash tests/check.sh",
+    "test": "node tests/run.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1"
+  }
+}
