@@ -61,10 +61,10 @@
     return null;
   }
   function fogChanged(M) { VT.fogRev++; saveMaps(); draw(); schedulePush(); }
-  // "all" ops are a clean slate: what lies before the one before them can never be undone to, so it is dropped (keeps the saved list short).
+  // "all" ops are a clean slate. Only when the list is long (more than 300 steps) what lies before the previous one is dropped, so it stays small.
   function fogAll(M, v) {
     var last = -1; M.fog.forEach(function (o, i) { if (o.k === 'all') last = i; });
-    M.fog.push({ k: 'all', v: v }); if (last > 0) M.fog = M.fog.slice(last);
+    M.fog.push({ k: 'all', v: v }); if (M.fog.length > 300 && last > 0) M.fog = M.fog.slice(last);
     VT.fogC = evBuildFog(M.fog, VT.ras.w, VT.ras.h); fogChanged(M);
   }
   vcv.addEventListener('pointerdown', function (e) {

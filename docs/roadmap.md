@@ -11,7 +11,8 @@ Aufgabe laut `HANDOFF_ClaudeCode.md`: Datei real testen, Kaputtes finden, fixen,
 | Auf der Beamer-Seite läuft nichts vom DM-Code (frühes `return` am Anfang des v5-Skripts, `build.py` patcht das). | Sonst würde das Beamer-Fenster beim Schließen den DM-Zustand mit alten Werten überschreiben. |
 | **Skizzen:** Raster und Rahmen nicht mehr ins Bild brennen, Farb-Variablen auflösen, Schrift EB Garamond einbetten. | Sonst: schwarzer Balken an den Türöffnungen, „Raster aus“ ohne Wirkung, doppelte Linien. |
 | **Markierungen der Skizzen (G, S, O, F, P, Z, R …) gehören zur DM-Ebene.** Für die Spielerinnen übernehmen die Figuren des Spieltischs. | Sonst stehen Gegner-Markierungen fest im Bild, und gesetzte Figuren doppeln sie. **Offen für Lu:** Wenn die Spielerinnen sie sehen sollen, ist es eine Zeile in `src/m1_store.js` (Markierungs-Gruppen nicht als `dm` kennzeichnen). |
-| Nebel: jeder Eingriff ist ein Schritt (auch „Alles verdecken“/„aufdecken“), Rückgängig geht über alle. Ältere Schritte vor dem vorletzten „alles“ fallen weg. | „Alles verdecken“ löschte vorher die ganze Arbeit ohne Rückweg. Die gespeicherte Liste bleibt kurz. |
+| Nebel: jeder Eingriff ist ein Schritt (auch „Alles verdecken“/„aufdecken“), Rückgängig geht über alle. Erst ab mehr als 300 Schritten fallen die Schritte vor dem vorletzten „alles“ weg. | „Alles verdecken“ löschte vorher die ganze Arbeit ohne Rückweg. Die gespeicherte Liste bleibt klein. |
+| **Gegner, Verbündete und DM-Marker liegen für die Spielerinnen unter dem Nebel, Heldinnen darüber.** Die Spielleitung sieht alles über dem Nebel. | Sonst zeigte der Beamer einen Gegner im noch verdeckten Bereich (Fund des Reviews, reproduziert). |
 | Figuren auch auf Karten ohne Raster (virtuelle Felder, Bildbreite ÷ 16). Das Lineal sagt dort klar, dass es nichts messen kann. | Szenen 0, 2, 3 nutzen „Die Gegend“ ohne Raster; vorher ließ sich dort nichts setzen. |
 | Lineal rastet auf Feldmitten. | Frei gesetzte Endpunkte rundeten falsch (4 diagonal in 5-10-5 ergab 5 statt 6 Felder). |
 | Ton: weicher Begrenzer (tanh) am Master. Effekte-Bus 0,75. Klangteppiche neu: Akkordfolge, Zupfnoten, Echo, Nachhall, im Kampf ein Herzschlag-Puls. | Effekte erreichten Pegel 1,04 (Übersteuern). Die alten Teppiche waren ein einzelner stehender Akkord. |
@@ -39,6 +40,10 @@ Aufgabe laut `HANDOFF_ClaudeCode.md`: Datei real testen, Kaputtes finden, fixen,
 15. Export: sehr große Projekte stürzten ab; Import: bei Fehler blieb das Speichern abgeschaltet.
 16. Spieltisch auf Handy und iPad hochkant 932 px breit (Werkzeugleiste lief über), ebenso „Wissen“ und „Vorbereiten“ auf dem Handy.
 17. Kontrast unter AA an mehreren Stellen (Standard und Kerzenlicht), aktiver Reiter im Kerzenlicht kaum lesbar.
+18. Beamer: Gegnerfiguren in noch verdecktem Nebel waren sichtbar (Fund des Reviews).
+19. Würfelergebnis: nach DM-Neuladen wurde der erste Wurf nicht gezeigt (gleiche Nummer), ein neu geladener Beamer zeigte den alten Wurf nochmal.
+20. Eine Datei aus der Bibliothek löschen startete die Atmosphäre der Szene.
+21. Import: ein Speicherfehler beim Abschließen der Speicherung wurde nicht bemerkt (erst die abgeschlossene Transaktion zählt).
 
 ## Von Hand zu prüfen (geht in der Cloud nicht)
 

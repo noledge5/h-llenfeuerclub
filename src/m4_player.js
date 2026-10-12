@@ -68,6 +68,7 @@
       if (!D) { el.hidden = true; return; }
       if (D.id !== diceId) {
         diceId = D.id; clearTimeout(diceTimer);
+        if (Date.now() - D.t > 6000) { el.hidden = true; return; } // an old roll (late connection, reloaded beamer) is not replayed
         el.className = 'dice ' + (D.cls || ''); el.innerHTML = '<b>' + esc(D.total) + '</b><span>' + esc(D.det) + '</span>'; el.hidden = false;
         diceTimer = setTimeout(function () { el.hidden = true; }, 5500);
       }

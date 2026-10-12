@@ -21,7 +21,7 @@
     if (BOOTED) vttCombatChanged();
   };
   EV.dice = function (total, det, cls) {
-    curDice = { id: ++diceSeq, total: total, det: det, cls: cls || '' };
+    curDice = { id: SID + ':' + (++diceSeq), t: Date.now(), total: total, det: det, cls: cls || '' };
     if (cls === 'crit') fireEv('nat20');
     if (ST.diceShow && BOOTED) pushState();
   };
@@ -111,7 +111,7 @@
     }
     if (b.dataset.libDel) {
       if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Sicher?'; setTimeout(function () { if (b.isConnected) { b.dataset.armed = '0'; b.textContent = 'Löschen'; } }, 3000); return; }
-      var id = b.dataset.libDel; removeMedia(id).then(function () { Object.keys(ST.scenes).forEach(function (k) { var o = ST.scenes[k]; if (o.music === id) o.music = null; if (o.comb === id) o.comb = null; if (o.atmo) o.atmo = o.atmo.map(function (x) { return x === id ? '' : x; }); if (o.fx) o.fx = o.fx.map(function (x) { return x === id ? '' : x; }); }); saveST(); delete fxBuf[id]; if (AU.music.id === id) playMusic(sceneCfg(cur).music && sceneCfg(cur).music !== id ? sceneCfg(cur).music : null, 1); setAtmo(sceneCfg(cur).atmo, 1); renderSoundView(); renderFxBar(); renderSceneBars(); });
+      var id = b.dataset.libDel; removeMedia(id).then(function () { Object.keys(ST.scenes).forEach(function (k) { var o = ST.scenes[k]; if (o.music === id) o.music = null; if (o.comb === id) o.comb = null; if (o.atmo) o.atmo = o.atmo.map(function (x) { return x === id ? '' : x; }); if (o.fx) o.fx = o.fx.map(function (x) { return x === id ? '' : x; }); }); saveST(); delete fxBuf[id]; if (AU.music.id === id) playMusic(null, 1); if (AU.atmo[id]) setAtmo(Object.keys(AU.atmo).filter(function (k) { return k !== id; }), 1); renderSoundView(); renderFxBar(); renderSceneBars(); });
     }
   });
   $('#v-sound').addEventListener('change', function (e) {

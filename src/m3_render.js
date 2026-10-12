@@ -42,12 +42,10 @@
       for (y = 0; y <= rows; y++) { g.moveTo(ox, oy + y * P); g.lineTo(ox + cols * P, oy + y * P); }
       g.stroke(); g.lineWidth = lw * 0.5; g.strokeStyle = 'rgba(255,240,200,0.28)'; g.stroke();
     }
-    if (M.fogOn !== false && A.fog) { g.globalAlpha = o.fogAlpha; g.drawImage(A.fog, 0, 0, M.w, M.h); g.globalAlpha = 1; }
-    if (o.dm && A.dm) g.drawImage(A.dm, 0, 0, M.w, M.h);
+    // Figures: the DM sees all of them above the fog. For the players enemies, allies and markers lie UNDER the fog (a foe in
+    // covered fog must not show), heroes stay above it so the party is always seen.
     var toks = M.tokens || [];
-    for (var i = 0; i < toks.length; i++) {
-      var t = toks[i];
-      if (!o.dm && (t.hid || t.t === 'dm')) continue;
+    function drawTok(t) {
       var s = t.s || 1, r = Q * 0.44 * s, cx = ox + (t.x + s / 2) * Q, cy = oy + (t.y + s / 2) * Q;
       g.save();
       if (t.hid && o.dm) g.globalAlpha = 0.5;
@@ -55,7 +53,7 @@
         g.translate(cx, cy); g.rotate(Math.PI / 4); g.fillStyle = 'rgba(123,31,31,0.85)'; g.strokeStyle = '#e8c76a'; g.lineWidth = Math.max(2, r * 0.1); g.setLineDash([r * 0.3, r * 0.2]);
         g.beginPath(); g.rect(-r * 0.7, -r * 0.7, r * 1.4, r * 1.4); g.fill(); g.stroke(); g.rotate(-Math.PI / 4); g.setLineDash([]);
         g.fillStyle = '#f6efd9'; g.font = '700 ' + r * 0.9 + 'px Cinzel, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(t.ch || '!', 0, r * 0.05);
-        g.restore(); continue;
+        g.restore(); return;
       }
       var ring = t.t === 'foe' ? '#e0675c' : t.t === 'ally' ? '#e08a2e' : '#7fcf98', disc = t.t === 'foe' ? '#4a1614' : '#2a1f17';
       if (t.dead) { ring = '#8a8378'; disc = '#33302b'; g.globalAlpha *= 0.8; }
@@ -71,6 +69,12 @@
       for (var k = 0; k < cs.length && k < 5; k++) { g.beginPath(); g.arc(cx - r * 0.7 + k * r * 0.35, cy - r * 1.02, r * 0.13, 0, 6.2832); g.fillStyle = '#e08a2e'; g.fill(); g.lineWidth = 1; g.strokeStyle = '#1c130b'; g.stroke(); }
       g.restore();
     }
+    function tokVisible(t) { return o.dm || !(t.hid || t.t === 'dm'); }
+    var i;
+    if (!o.dm) for (i = 0; i < toks.length; i++) if (toks[i].t !== 'hero' && tokVisible(toks[i])) drawTok(toks[i]);
+    if (M.fogOn !== false && A.fog) { g.globalAlpha = o.fogAlpha; g.drawImage(A.fog, 0, 0, M.w, M.h); g.globalAlpha = 1; }
+    if (o.dm && A.dm) g.drawImage(A.dm, 0, 0, M.w, M.h);
+    for (i = 0; i < toks.length; i++) if (tokVisible(toks[i]) && (o.dm || toks[i].t === 'hero')) drawTok(toks[i]);
     var pg = M.pings || [];
     for (var j = 0; j < pg.length; j++) {
       var a = (o.now - pg[j].t0) / 1600; if (a < 0 || a > 1) continue;

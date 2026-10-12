@@ -22,7 +22,8 @@
     });
   }
   function dbTx(mode) { return DB.transaction('blobs', mode).objectStore('blobs'); }
-  function dbPut(rec) { return new Promise(function (res, rej) { if (!DB) return rej(new Error('Kein Speicher')); var r = dbTx('readwrite').put(rec); r.onsuccess = function () { res(rec.id); }; r.onerror = function () { rej(r.error); }; }); }
+  // resolved when the transaction has completed (a full disk aborts it only at the commit)
+  function dbPut(rec) { return new Promise(function (res, rej) { if (!DB) return rej(new Error('Kein Speicher')); var tx = DB.transaction('blobs', 'readwrite'); tx.objectStore('blobs').put(rec); tx.oncomplete = function () { res(rec.id); }; tx.onabort = tx.onerror = function () { rej(tx.error || new Error('Speicher voll?')); }; }); }
   function dbGet(id) { return new Promise(function (res) { if (!DB) return res(null); var r = dbTx('readonly').get(id); r.onsuccess = function () { res(r.result || null); }; r.onerror = function () { res(null); }; }); }
   function dbDel(id) { return new Promise(function (res) { if (!DB) return res(); var r = dbTx('readwrite').delete(id); r.onsuccess = r.onerror = function () { res(); }; }); }
   function dbAll() { return new Promise(function (res) { if (!DB) return res([]); var r = dbTx('readonly').getAll(); r.onsuccess = function () { res(r.result || []); }; r.onerror = function () { res([]); }; }); }
