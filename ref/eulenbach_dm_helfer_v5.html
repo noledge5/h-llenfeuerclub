@@ -1,0 +1,1236 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>[hidden]{display:none!important}</style>
+<title>Eulenbach DM-Helfer</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Carlito:ital,wght@0,400;0,700;1,400;1,700&display=swap">
+<style>
+/* Layout: App mit Seitenleiste (Desktop) bzw. Leiste unten (Handy). „Spielen“ teilt sich ab 1100 px in Szene links und Spieltisch-Dock rechts.
+   Farben und Schrift nach Lus Materialien: Dunkelgrün, Calibri (Carlito), kein Blau, sparsame Flächen; Glut-Orange nur für Licht und Feuer. */
+:root {
+  --bg: #f2f4f1;
+  --surface: #ffffff;
+  --surface-2: #e8ede9;
+  --fg: #17231b;
+  --muted: #5a6a60;
+  --line: #d3ddd6;
+  --accent: #2D6A4F;
+  --accent-soft: #dcebe2;
+  --accent-ink: #ffffff;
+  --ember: #b4641c;
+  --ember-soft: #f6e6d3;
+  --danger: #a4262c;
+  --danger-soft: #f6dddd;
+  --map-ground: #fbfcfa;
+  --map-build: #e4ebe6;
+  --map-fog: #8d9a92;
+  --font: Calibri, Carlito, "Segoe UI", system-ui, sans-serif;
+  --r: 10px;
+  --shadow: 0 1px 2px rgba(23,35,27,.06), 0 4px 16px rgba(23,35,27,.06);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1712; --surface: #16211a; --surface-2: #1d2b23; --fg: #e4ece6; --muted: #9db1a5; --line: #2a3a31;
+    --accent: #74c69d; --accent-soft: #1f3a2d; --accent-ink: #0e1812; --ember: #e2a052; --ember-soft: #3a2b18;
+    --danger: #e57b80; --danger-soft: #3b1f21; --map-ground: #131e17; --map-build: #22332a; --map-fog: #6f7f76;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1712; --surface: #16211a; --surface-2: #1d2b23; --fg: #e4ece6; --muted: #9db1a5; --line: #2a3a31;
+  --accent: #74c69d; --accent-soft: #1f3a2d; --accent-ink: #0e1812; --ember: #e2a052; --ember-soft: #3a2b18;
+  --danger: #e57b80; --danger-soft: #3b1f21; --map-ground: #131e17; --map-build: #22332a; --map-fog: #6f7f76;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 17px; line-height: 1.5; }
+h1, h2, h3, h4 { margin: 0; line-height: 1.2; text-wrap: balance; }
+p { margin: 0 0 10px; }
+ul, ol { margin: 0 0 12px; padding-left: 1.2rem; }
+li { margin-bottom: 4px; }
+a { color: var(--accent); text-underline-offset: 2px; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.muted { color: var(--muted); }
+.eyebrow { font-size: .74rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+.num { font-variant-numeric: tabular-nums; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- App-Gerüst ---------- */
+.app { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 100%; }
+.topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; padding: 10px 16px; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; margin-right: auto; }
+.brand-mark { width: 30px; height: 30px; flex: 0 0 auto; }
+.brand h1 { font-size: 1.12rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand small { display: block; font-size: .78rem; color: var(--muted); white-space: nowrap; }
+.iconbtn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 40px; height: 40px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-weight: 700; font-size: .92rem; }
+.iconbtn svg { width: 20px; height: 20px; }
+.iconbtn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.timer { font-variant-numeric: tabular-nums; }
+.timer.over { color: var(--ember); border-color: var(--ember); }
+.combat-chip { background: var(--danger-soft); border-color: var(--danger); color: var(--danger); }
+.combat-chip[hidden] { display: none !important; }
+
+.nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; background: var(--surface); border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(5, 1fr); padding: 4px 4px calc(4px + env(safe-area-inset-bottom, 0px)); }
+.nav button { background: none; border: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; font-size: .74rem; font-weight: 700; color: var(--muted); cursor: pointer; border-radius: 8px; }
+.nav button svg { width: 22px; height: 22px; }
+.nav button[aria-current="page"] { color: var(--accent); background: var(--accent-soft); }
+main { padding: 16px 16px calc(96px + env(safe-area-inset-bottom, 0px)); min-width: 0; }
+.view[hidden] { display: none !important; }
+.view-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.view-head h2 { font-size: 1.6rem; }
+
+@media (min-width: 900px) {
+  .app { grid-template-columns: 220px minmax(0, 1fr); grid-template-rows: auto 1fr; }
+  .topbar { grid-column: 1 / -1; }
+  .nav { position: sticky; top: 61px; align-self: start; height: calc(100vh - 61px); grid-template-columns: 1fr; grid-auto-rows: min-content; gap: 4px; border-top: 0; border-right: 1px solid var(--line); padding: 14px 10px; background: transparent; }
+  .nav button { flex-direction: row; justify-content: flex-start; gap: 12px; padding: 10px 12px; font-size: .98rem; }
+  main { padding: 22px 28px 48px; }
+}
+
+/* ---------- Gemeinsame Bausteine ---------- */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 6px 14px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); font-weight: 700; cursor: pointer; }
+.btn.ghost { background: transparent; color: var(--accent); }
+.btn.quiet { background: var(--surface); color: var(--fg); border-color: var(--line); }
+.btn.danger { background: transparent; color: var(--danger); border-color: var(--danger); }
+.btn.ember { background: var(--ember); border-color: var(--ember); color: #fff; }
+.btn.sm { min-height: 32px; padding: 2px 10px; font-size: .9rem; }
+.btn svg { width: 18px; height: 18px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; }
+input[type="number"], input[type="text"], input[type="search"] { font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; min-height: 40px; min-width: 0; }
+.pill { display: inline-flex; align-items: center; gap: 4px; font-size: .78rem; font-weight: 700; border-radius: 999px; padding: 1px 9px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.pill.fight { color: var(--danger); border-color: var(--danger); }
+.pill.dc { color: var(--accent); border-color: var(--accent); font-variant-numeric: tabular-nums; }
+.pill.cls { color: var(--fg); background: var(--surface-2); border-color: transparent; }
+.tblwrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 8px 12px 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: .74rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(86px + env(safe-area-inset-bottom, 0px)); z-index: 60; background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-weight: 700; box-shadow: var(--shadow); max-width: calc(100% - 32px); }
+@media (min-width: 900px) { .toast { bottom: 24px; } }
+
+/* ---------- Spielen ---------- */
+.play { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+.pane { min-width: 0; }
+.playswitch { display: inline-flex; background: var(--surface-2); border-radius: 999px; padding: 3px; }
+.playswitch button { border: 0; background: none; padding: 6px 16px; border-radius: 999px; font-weight: 700; color: var(--muted); cursor: pointer; }
+.playswitch button[aria-pressed="true"] { background: var(--surface); color: var(--fg); box-shadow: var(--shadow); }
+@media (min-width: 1100px) {
+  .playswitch { display: none; }
+  .play { grid-template-columns: minmax(0, 1fr) 420px; align-items: start; }
+  .play > .pane { display: block !important; }
+  .dock { position: sticky; top: 80px; max-height: calc(100vh - 100px); overflow: auto; }
+}
+
+.stepper { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 14px; scrollbar-width: thin; }
+.stepper .sess { flex: 0 0 auto; font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); align-self: center; padding: 0 4px 0 8px; }
+.stepper .sess:first-child { padding-left: 0; }
+.stepper button { flex: 0 0 auto; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 4px 12px; cursor: pointer; font-weight: 700; font-size: .9rem; white-space: nowrap; }
+.stepper button[aria-current="step"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.stepper button.done { color: var(--muted); }
+
+.scene { max-width: 72ch; }
+.scene[hidden] { display: none !important; }
+.scene-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 12px; margin-bottom: 14px; }
+.scene-head h3 { font-size: 1.7rem; flex: 1 1 100%; }
+.read { position: relative; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 0 var(--r) var(--r) 0; padding: 12px 16px 14px; margin: 0 0 16px; font-size: 1.12rem; font-style: italic; line-height: 1.55; }
+.read::before { content: "Vorlesen"; display: block; font-style: normal; font-size: .7rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; }
+.blk { margin: 0 0 18px; }
+.blk > h4 { font-size: .78rem; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); margin-bottom: 8px; }
+.checks { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--line); }
+.checks li { border-bottom: 1px solid var(--line); margin: 0; padding: 8px 0; }
+.checks label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.checks input { width: 20px; height: 20px; margin-top: 3px; accent-color: var(--accent); flex: 0 0 auto; }
+.checks input:checked + span { color: var(--muted); }
+.checks input:checked + span b { text-decoration: line-through; }
+.rolls { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--line); }
+.rolls li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; border-bottom: 1px solid var(--line); padding: 8px 0; margin: 0; }
+.rolls li .pill { align-self: start; margin-top: 2px; }
+.callout { border-radius: var(--r); padding: 12px 14px; margin: 0 0 16px; background: var(--surface-2); }
+.callout b:first-child { display: block; font-size: .74rem; letter-spacing: .09em; text-transform: uppercase; margin-bottom: 4px; }
+.callout.cliff { background: var(--ember-soft); }
+.callout.cliff b:first-child { color: var(--ember); }
+.callout.fightc { background: var(--danger-soft); display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.callout.fightc b:first-child { color: var(--danger); }
+.spot { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 18px; }
+.handout { background: var(--surface); border: 1px dashed var(--muted); border-radius: var(--r); padding: 14px 16px; margin: 0 0 16px; }
+.handout .eyebrow { margin-bottom: 6px; }
+.handout p { font-size: 1.1rem; }
+.scene-nav { display: flex; justify-content: space-between; gap: 10px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--line); }
+
+/* ---------- Dock ---------- */
+.dock { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
+.dock-tabs { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--surface); z-index: 2; border-radius: 14px 14px 0 0; }
+.dock-tabs button { border: 0; background: none; padding: 12px 4px 10px; font-weight: 700; font-size: .92rem; color: var(--muted); border-bottom: 3px solid transparent; cursor: pointer; }
+.dock-tabs button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+.dock-body { padding: 14px; }
+.dock-body[hidden] { display: none !important; }
+
+.cbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.cbar .round { font-weight: 700; margin-right: auto; }
+.cbar .round small { display: block; font-weight: 400; color: var(--muted); font-size: .8rem; }
+.banner { border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; font-weight: 700; }
+.banner.ember { background: var(--ember-soft); color: var(--fg); }
+.banner.ember b { color: var(--ember); }
+.banner.danger { background: var(--danger-soft); }
+
+.lantern { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 12px; border: 1px solid var(--ember); border-radius: 10px; margin-bottom: 10px; }
+.lantern .lbl { font-weight: 700; margin-right: auto; }
+.flame { width: 30px; height: 36px; border: 0; background: none; padding: 0; cursor: pointer; }
+.flame svg { width: 100%; height: 100%; }
+.flame .f { fill: var(--ember); }
+.flame[aria-pressed="true"] .f { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 3 2; }
+
+.combatants { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--line); }
+.cmb { border-bottom: 1px solid var(--line); margin: 0; }
+.cmb-row { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 6px; }
+.cmb.now .cmb-row { background: var(--accent-soft); border-radius: 8px; }
+.cmb .ini { width: 46px; text-align: center; padding: 4px 2px; min-height: 36px; font-weight: 700; }
+.cmb .ini.need { border-color: var(--ember); background: var(--ember-soft); }
+.cmb-main { display: block; width: 100%; min-width: 0; cursor: pointer; background: none; border: 0; text-align: left; padding: 0; }
+.cmb-main > span { display: block; }
+.cmb-main > .cmb-name, .cmb-main > .conds { display: flex; }
+.cmb-name { font-weight: 700; display: flex; gap: 6px; align-items: baseline; min-width: 0; }
+.cmb-name span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmb-name .ac { font-weight: 400; color: var(--muted); font-size: .85rem; white-space: nowrap; }
+.hpbar { display: block; height: 6px; background: var(--surface-2); border-radius: 3px; overflow: hidden; margin-top: 4px; }
+.hpbar i { display: block; height: 100%; background: var(--accent); transition: width .2s; }
+.hpbar i.low { background: var(--danger); }
+.conds { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.conds .pill { font-size: .7rem; padding: 0 7px; }
+.hp { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.hp small { color: var(--muted); font-weight: 400; }
+.cmb.down .cmb-name span:first-child { text-decoration: line-through; color: var(--muted); }
+.cmb-tag { font-size: .68rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.cmb-x { padding: 4px 6px 12px 62px; display: grid; gap: 10px; }
+.cmb-x[hidden] { display: none !important; }
+.hpctl { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.hpctl input { width: 76px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 3px 10px; font-size: .85rem; font-weight: 700; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.dsave { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; font-size: .9rem; }
+.dsave span { display: inline-flex; gap: 4px; align-items: center; }
+.pip { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); background: none; cursor: pointer; padding: 0; }
+.pip.ok[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); }
+.pip.bad[aria-pressed="true"] { background: var(--danger); border-color: var(--danger); }
+.acts { display: grid; gap: 6px; }
+.act { display: flex; gap: 8px; align-items: flex-start; justify-content: space-between; font-size: .92rem; }
+.act p { margin: 0; min-width: 0; }
+.empty { text-align: center; padding: 22px 10px; color: var(--muted); }
+.empty svg { width: 40px; height: 40px; opacity: .6; }
+.presets { display: grid; gap: 6px; margin-top: 10px; }
+.addrow { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+.addrow input[type="text"] { flex: 1 1 120px; }
+.addrow input[type="number"] { width: 64px; }
+
+/* Würfel */
+.dicegrid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.die { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 8px 0; font-weight: 700; cursor: pointer; }
+.die:active { transform: scale(.96); }
+.dieopts { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; margin-bottom: 10px; }
+.dieopts label { display: flex; flex-direction: column; font-size: .76rem; font-weight: 700; color: var(--muted); gap: 2px; }
+.dieopts input { width: 72px; }
+.bigres { font-size: 2.6rem; font-weight: 700; line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums; margin-top: 12px; }
+.bigres.fail { color: var(--danger); }
+.bigres.crit { color: var(--ember); }
+.log { list-style: none; padding: 0; margin: 10px 0 0; font-size: .88rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.log li { border-top: 1px solid var(--line); padding: 4px 0; margin: 0; }
+.log li b { color: var(--fg); }
+
+/* Ideen */
+.gen { border-bottom: 1px solid var(--line); padding: 10px 0; }
+.gen header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.gen h4 { font-size: .98rem; }
+.gen output { display: block; margin-top: 4px; min-height: 1.4em; }
+
+/* ---------- Karten ---------- */
+.maps { display: grid; gap: 20px; }
+@media (min-width: 1300px) { .maps { grid-template-columns: 1fr 1fr; } .maps .wide { grid-column: 1 / -1; } }
+.mapcard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.mapcard header { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.mapcard h3 { font-size: 1.05rem; }
+.mapbox { overflow-x: auto; background: var(--map-ground); }
+.mapbox svg { display: block; width: 100%; min-width: 520px; height: auto; }
+.mapbox.narrow svg { min-width: 300px; max-width: 460px; margin-inline: auto; }
+.mapcard:fullscreen { overflow: auto; background: var(--map-ground); }
+.mapcard:fullscreen .mapbox svg { max-height: calc(100vh - 60px); width: auto; margin: 0 auto; min-width: 0; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .84rem; color: var(--muted); padding: 8px 14px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 13px; height: 13px; border-radius: 50%; border: 2px solid; display: inline-block; }
+.lg-z { border-color: var(--danger); } .lg-g { border-color: var(--accent); } .lg-p { border-color: var(--ember); } .lg-r { border-color: var(--danger); background: var(--danger); }
+svg .m-grid { stroke: var(--line); stroke-width: 1; }
+svg .m-frame { fill: none; stroke: var(--muted); stroke-width: 1.5; }
+svg .m-bld { fill: var(--map-build); stroke: var(--fg); stroke-width: 1.5; }
+svg .m-wall { fill: none; stroke: var(--fg); stroke-width: 5; }
+svg .m-thin { fill: none; stroke: var(--fg); stroke-width: 1.5; }
+svg .m-path { fill: var(--map-build); opacity: .55; }
+svg .m-fog { fill: url(#fog); }
+svg .m-water { fill: url(#water); stroke: var(--muted); stroke-width: 1; }
+svg .m-fire { fill: var(--ember); }
+svg .m-fireo { fill: none; stroke: var(--ember); stroke-width: 2; }
+svg .m-wood { fill: var(--map-build); stroke: var(--ember); stroke-width: 1.5; }
+svg .m-txt { fill: var(--fg); font-family: var(--font); font-size: 12px; }
+svg .m-txt.s { font-size: 10.5px; fill: var(--muted); }
+svg .m-txt.b { font-weight: 700; }
+svg .m-txt.dmt { fill: var(--danger); font-weight: 700; }
+svg .mk-z { fill: var(--map-ground); stroke: var(--danger); stroke-width: 2.5; }
+svg .mk-g { fill: var(--map-ground); stroke: var(--accent); stroke-width: 2.5; }
+svg .mk-p { fill: var(--map-ground); stroke: var(--ember); stroke-width: 2.5; }
+svg .mk-r { fill: var(--danger); }
+svg .mk-t { font-family: var(--font); font-size: 11px; font-weight: 700; text-anchor: middle; dominant-baseline: central; fill: var(--fg); }
+svg .mk-t.light { fill: var(--map-ground); }
+svg .m-hatch { stroke: var(--map-fog); stroke-width: 1.2; }
+svg .m-water-l { stroke: var(--muted); stroke-width: 1; }
+svg .m-stream { fill: none; stroke: var(--muted); stroke-width: 3; }
+svg .m-stream.dry { stroke-dasharray: 3 5; }
+svg .m-dash { fill: none; stroke: var(--fg); stroke-width: 2; stroke-dasharray: 6 5; }
+svg .m-tree { fill: var(--fg); }
+body.playerview svg .dm { display: none; }
+
+/* ---------- Heldinnen ---------- */
+.heroes { display: grid; gap: 16px; }
+@media (min-width: 1200px) { .heroes { grid-template-columns: 1fr 1fr; } }
+.hero { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 10px; align-content: start; }
+.hero header { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.hero h3 { font-size: 1.3rem; }
+.stats { display: flex; flex-wrap: wrap; gap: 6px; }
+.stat { background: var(--surface-2); border-radius: 8px; padding: 4px 10px; font-size: .85rem; }
+.stat b { font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.abil { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; text-align: center; font-variant-numeric: tabular-nums; }
+.abil div { border: 1px solid var(--line); border-radius: 8px; padding: 3px 0; font-size: .74rem; color: var(--muted); }
+.abil b { display: block; font-size: 1.05rem; color: var(--fg); }
+.hero p { margin: 0; font-size: .95rem; }
+.hero .lbl { font-weight: 700; }
+details.more summary { cursor: pointer; font-weight: 700; color: var(--accent); }
+.inv { border-top: 1px solid var(--line); padding-top: 10px; }
+.inv h4 { font-size: .78rem; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+.inv ul { list-style: none; padding: 0; margin: 0 0 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+.inv li { margin: 0; display: inline-flex; align-items: center; gap: 2px; background: var(--surface-2); border-radius: 999px; padding: 2px 4px 2px 10px; font-size: .88rem; }
+.inv li button { border: 0; background: none; cursor: pointer; color: var(--muted); width: 24px; height: 24px; border-radius: 50%; }
+.inv li button:hover { color: var(--danger); }
+.gold { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--fg); }
+.gold input { width: 76px; min-height: 32px; }
+.inv form { display: flex; gap: 6px; flex-wrap: wrap; }
+.inv form input { flex: 1 1 140px; }
+.quick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+
+/* ---------- Wissen & Vorbereitung ---------- */
+.search { position: relative; max-width: 420px; flex: 1 1 260px; }
+.search input { width: 100%; padding-left: 36px; }
+.search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--muted); }
+.kgrid { display: grid; gap: 14px; }
+@media (min-width: 1200px) { .kgrid { grid-template-columns: 1fr 1fr; } .kgrid .wide { grid-column: 1 / -1; } }
+.kcard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; }
+.kcard[hidden] { display: none !important; }
+.kcard h3 { font-size: 1.12rem; margin-bottom: 10px; }
+.kcard ul.lines { list-style: none; padding: 0; margin: 0; }
+.kcard ul.lines li { border-top: 1px solid var(--line); padding: 7px 0; margin: 0; }
+.timeline { list-style: none; padding: 0; margin: 0; position: relative; }
+.timeline li { position: relative; padding: 0 0 12px 22px; margin: 0; }
+.timeline li::before { content: ""; position: absolute; left: 5px; top: 7px; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); }
+.timeline li::after { content: ""; position: absolute; left: 9px; top: 18px; bottom: 0; width: 1px; background: var(--line); }
+.timeline li:last-child::after { display: none; }
+.npcs { display: grid; gap: 10px; }
+@media (min-width: 700px) { .npcs { grid-template-columns: 1fr 1fr; } }
+.npc { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.npc b { display: block; }
+.npc .voice { font-size: .88rem; color: var(--muted); }
+.npc q { display: block; font-style: italic; margin-top: 4px; }
+.sb { border-top: 1px solid var(--line); padding: 12px 0; }
+.sb:first-of-type { border-top: 0; padding-top: 0; }
+.sb header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.sb h4 { font-size: 1.05rem; }
+.sb p { margin: 4px 0 0; font-size: .93rem; }
+.prep { display: grid; gap: 14px; }
+@media (min-width: 1200px) { .prep { grid-template-columns: 1fr 1fr; } .prep .wide { grid-column: 1 / -1; } }
+.fine { font-size: .82rem; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="9" y="3" width="14" height="4" rx="1" fill="var(--accent)"/><path d="M8 8h16l-2 18H10z" fill="none" stroke="var(--accent)" stroke-width="2"/><path d="M16 12c3 3 3 6 0 9-3-3-3-6 0-9z" fill="var(--ember)"/><rect x="7" y="26" width="18" height="3" rx="1" fill="var(--accent)"/></svg>
+      <div style="min-width:0"><h1>Die Laterne von Eulenbach</h1><small id="brandSub">DM-Helfer · Kapitel 1 · Stufe 1</small></div>
+    </div>
+    <button class="iconbtn combat-chip" id="combatChip" type="button" hidden aria-label="Zum Kampf"></button>
+    <button class="iconbtn timer" id="timerBtn" type="button" title="Sitzungszeit starten oder anhalten (lange tippen: zurücksetzen)" aria-label="Sitzungszeit">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></svg><span id="timerTxt">0:00</span>
+    </button>
+    <button class="iconbtn" id="diceBtn" type="button" aria-label="Würfel öffnen" title="Würfel">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l9 5v10l-9 5-9-5V7z"/><path d="M3 7l9 5 9-5M12 12v10"/></svg>
+    </button>
+  </header>
+
+  <nav class="nav" aria-label="Bereiche">
+    <button data-view="spielen" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 5v14l11-7z"/></svg>Spielen</button>
+    <button data-view="karten" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg>Karten</button>
+    <button data-view="heldinnen" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6M14.5 14.5c3 0 6 1.8 6 5.5"/></svg>Heldinnen</button>
+    <button data-view="wissen" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h7a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H4zM20 4h-5a3 3 0 0 0-3 3"/><path d="M20 4v14h-6"/></svg>Wissen</button>
+    <button data-view="vorbereitung" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg>Vorbereiten</button>
+  </nav>
+
+  <main>
+  <!-- ================= SPIELEN ================= -->
+  <section class="view" id="v-spielen" aria-labelledby="h-spielen">
+    <div class="view-head">
+      <div><span class="eyebrow" id="sceneEyebrow">Sitzung 1</span><h2 id="h-spielen" class="sr">Spielen</h2></div>
+      <div class="playswitch" role="group" aria-label="Ansicht">
+        <button type="button" data-pane="scene" aria-pressed="true">Szene</button>
+        <button type="button" data-pane="dock" aria-pressed="false">Spieltisch</button>
+      </div>
+    </div>
+    <div class="play">
+      <div class="pane" id="paneScene">
+        <div class="stepper" id="stepper" role="list"></div>
+        <div id="scenes">
+
+<!-- Szene 0 -->
+<article class="scene" data-s="1" data-short="Heldinnen" data-time="10">
+  <div class="scene-head"><span class="pill">Sitzung 1</span><span class="pill">10 Min.</span><h3>Die Freundesgruppe</h3></div>
+  <div class="read">Ihr seid Schülerinnen der Abenteuerschule in Weidenfurt, einen halben Tagesmarsch südlich vom Nebelwald. Heute beginnen die Herbstferien, und Meisterin Kranich hat euch mit einem Auftrag losgeschickt, der eher nach Ausflug klingt: „Bringt diesen Brief und dieses Päckchen zu meinem alten Freund Bror Eisenfaust in Eulenbach. Und dann genießt das Herbstfest. Ihr habt es euch verdient.“ Am späten Nachmittag seht ihr die Dächer von Eulenbach vor euch.</div>
+  <div class="blk"><h4>So geht’s</h4>
+    <ol><li>Verteile die fünf Bögen (Bereich <b>Heldinnen</b>). Jede Spielerin gibt ihrer Heldin einen Namen.</li>
+    <li>Jede sagt zwei Sätze: <em>„Ich bin …, und ich bin an der Abenteuerschule, weil …“</em> und <em>„Mit … aus der Gruppe bin ich am längsten befreundet, weil …“</em></li>
+    <li>Erkläre nur drei Dinge: W20 plus Bonus gegen einen Schwierigkeitsgrad, Trefferpunkte, Initiative. Den Rest beim Spielen.</li>
+    <li>Tischregeln und Stopp-Karte kurz zeigen (Bereich <b>Vorbereiten</b>).</li></ol>
+  </div>
+  <div class="callout"><b>Tipp</b>Starte die Sitzungszeit oben rechts. Sie färbt sich nach 60 Minuten orange.</div>
+</article>
+
+<!-- Szene 1 -->
+<article class="scene" data-s="1" data-short="1 Herbstfest" data-time="25">
+  <div class="scene-head"><span class="pill">Sitzung 1</span><span class="pill">25 Min.</span><span class="pill fight">Kampf</span><h3>Das Herbstfest</h3></div>
+  <div class="read">Der Dorfplatz duftet nach Zwiebelkuchen und Rauch. Auf der Bühne singen die Kinder das alte Herbstlied: „Ein Licht im Turm, ein Licht im Tal, wer’s teilt, hat’s doppelt, jedes Mal.“ Bror, ein breiter Zwerg mit rußigen Händen, hat Meisterin Kranichs Brief gelesen und dröhnend gelacht. Als Dank will er euch als Ehrengäste die berühmte Eulenlaterne zeigen. Doch als ihr mit ihm oben im Laternenturm ankommt, hängt am Haken nur noch ein Stück Kette.</div>
+  <p><b>Lass die Gruppe 2–3 Minuten reagieren.</b> Dann:</p>
+  <div class="read">Unten verstummt das Lied. Vom Waldpfad im Norden quillt grauer Nebel über den Platz, kalt wie nasse Tücher. Im Nebel knackt und raschelt es. Kleine Gestalten aus schwarzem, tropfendem Holz staksen auf das Festfeuer zu, und die Kinder auf der Bühne schreien.</div>
+  <div class="callout fightc"><div><b>Kampf</b>3 Zweiglinge vom Waldpfad. In Runde 3 kommen 3 weitere aus der Ostgasse.</div><button class="btn danger sm" type="button" data-enc="fest">Kampf starten</button></div>
+  <div class="blk"><h4>Was passiert</h4><ul>
+    <li><b>Was sie wollen:</b> Wärme. Sie laufen zum Festfeuer und zu den Kindern auf der Bühne und greifen an, wer im Weg steht.</li>
+    <li><b>Lernmoment:</b> Erreicht ein Zweigling das Festfeuer, verbrennt er sofort (verwundbar gegen Feuer). Lass die Gruppe das sehen.</li>
+    <li><b>Bror</b> kämpft nicht, er bringt die Kinder in die Schmiede. Wer hilft (Aktion, kein Wurf), schützt sie sofort.</li></ul></div>
+  <div class="blk"><h4>Nach dem Kampf</h4><ul class="rolls">
+    <li><span>Holzreste untersuchen: riecht nach Moor, eiskalt. <em>Ohne Nebel können sie sich wohl nicht bewegen.</em></span><span class="pill dc">Naturkunde / Arkane Kunde SG 12</span></li>
+    <li><span>Ohne Erfolg erklärt Bror: „Zweiglinge. Meine Oma hat davon erzählt. Die kamen mit dem Moornebel, bevor Hedda die Laterne baute.“</span><span class="pill">kein Wurf</span></li></ul></div>
+  <div class="spot"><span class="eyebrow">Spotlight</span><span class="pill cls">Magierin: Brennende Hände</span><span class="pill cls">Kämpferin: vor der Bühne</span><span class="pill cls">Bardin: Inspiration</span></div>
+</article>
+
+<!-- Szene 2 -->
+<article class="scene" data-s="1" data-short="2 Spuren" data-time="20">
+  <div class="scene-head"><span class="pill">Sitzung 1</span><span class="pill">20 Min.</span><h3>Spuren im Dorf</h3></div>
+  <div class="read">Der Nebel hängt dünn und kalt zwischen den Häusern. Bror und die Dorfleute schleppen Holz an den Dorfrand und entzünden Feuer um Feuer, bis ein flackernder Ring das ganze Dorf umgibt. Bürgermeisterin Mirelle steht blass vor dem leeren Laternenturm. „Ohne die Laterne kommt der Nebel jede Nacht weiter“, sagt sie leise. „Wer tut so etwas?“</div>
+  <div class="blk"><h4>Hinweise · abhaken, was die Gruppe findet (3 reichen)</h4><ul class="checks">
+    <li><label><input type="checkbox" data-clue="spuren"><span><b>Fußspuren</b> unter dem Turm: viele kleine, nackte Füße Richtung Waldpfad. <span class="pill dc">Überlebenskunst SG 10</span> oder automatisch bei gezielter Suche.</span></label></li>
+    <li><label><input type="checkbox" data-clue="pip"><span><b>Pip</b> hinter der Bühne: „Kleine Leute mit einer Lampe! Zum Wald! Die haben gezittert.“ <span class="pill dc">Überzeugen SG 10</span> oder ein Lied der Bardin.</span></label></li>
+    <li><label><input type="checkbox" data-clue="schuh"><span><b>Rindenschuh</b> auf der Turmtreppe, kindergroß, riecht nach nasser Höhle. <span class="pill dc">Nachforschungen SG 10</span>; Moos vom Bachufer am Moor: <span class="pill dc">Naturkunde SG 12</span></span></label></li>
+    <li><label><input type="checkbox" data-clue="licht"><span><b>Licht auf dem Hügel</b>, von der Turmspitze über dem Nebel. Bror: „Heddas alter Wachturm. Da wohnt seit hundert Jahren keiner.“ <span class="pill dc">Wahrnehmung SG 10</span></span></label></li>
+    <li><label><input type="checkbox" data-clue="inschrift"><span><b>Inschrift</b> über der Turmtür: „Geteiltes Licht wird nie weniger. – H. E.“ Mirelle: „Licht ist das Einzige, das mehr wird, wenn man es teilt.“ <span class="pill">automatisch</span></span></label></li>
+    <li><label><input type="checkbox" data-clue="schule"><span><b>Hedda Eulenfeder?</b> Den Namen kennt die Magierin aus der Schulchronik: Hedda hat vor hundert Jahren an der Abenteuerschule unterrichtet. <span class="pill dc">Geschichte SG 12</span></span></label></li>
+    <li><label><input type="checkbox" data-clue="bach"><span><b>Trockener Eulenbach</b>. Bror: „So wenig Wasser im Herbst? Noch nie.“ <span class="pill">automatisch</span></span></label></li></ul></div>
+  <div class="blk"><h4>Auftrag</h4><ul>
+    <li>Mirelle: „Ihr seid doch Odalie Kranichs Schülerinnen? Bror sagt, ihr seid fast schon Abenteurerinnen. Bitte, holt uns die Laterne zurück.“ 50 GM für die Gruppe, und sie schreibt Meisterin Kranich einen Brief über eure Hilfe.</li>
+    <li>Bror gibt jeder eine <b>Fackel</b>, Mirelle der Gruppe einen <b>Trank der Heilung</b>. (Im Inventar eintragen.)</li>
+    <li><b>Die Uhr:</b> „Das Holz reicht für heute Nacht und morgen Nacht.“ Aufbruch im Morgengrauen.</li></ul></div>
+  <div class="spot"><span class="eyebrow">Spotlight</span><span class="pill cls">Waldläuferin: Spuren</span><span class="pill cls">Bardin: Pip</span><span class="pill cls">Schurkin: Turm</span><span class="pill cls">Magierin: Holzreste</span></div>
+  <div class="callout cliff"><b>Cliffhanger · Ende Sitzung 1</b>Nachts am Feuerring sieht die Wache im Nebel etwas Großes, Langsames zwischen den Bäumen stehen. Es scheint das Dorf zu betrachten. Dann wendet es sich ab und zieht nach Norden, zum Hügel.</div>
+</article>
+
+<!-- Szene 3 -->
+<article class="scene" data-s="2" data-short="3 Wald" data-time="20">
+  <div class="scene-head"><span class="pill">Sitzung 2</span><span class="pill">20 Min.</span><h3>Der Weg durch den Wald</h3></div>
+  <div class="callout"><b>Zu Beginn</b>Lange Rast vorbei: volle TP, Zauberplätze, Fähigkeiten. Eine Spielerin fasst Sitzung 1 in zwei Sätzen zusammen.</div>
+  <div class="read">Im Morgengrauen ist der Wald still und tropfnass. Der Nebel hat sich in Senken und Gräben zurückgezogen und liegt dort wie Milch. Der Pfad folgt dem Eulenbach, nur dass kaum noch Bach da ist: ein schmales Rinnsal zwischen glitschigen Steinen.</div>
+  <div class="blk"><h4>Drei Stationen, beliebige Reihenfolge</h4><ul class="rolls">
+    <li><span><b>Erstarrte Zweiglinge</b> stehen aufrecht im Sonnenlicht, harmlos ohne Nebel. Alle drei „schauen“ nach Norden. Mit Feuer vernichtbar.</span><span class="pill dc">Wahrnehmung SG 12 · Naturkunde SG 10</span></li>
+    <li><span><b>Goblin-Schlingen</b> im Laub. Übersehen: GE-Rettungswurf SG 12 oder kopfüber am Baum. Kein Schaden, aber laut: Torwachen gewarnt (Szene 4, alle SG +2).</span><span class="pill dc">Wahrnehmung / Überlebenskunst SG 12</span></li>
+    <li><span><b>Trockenes Bachbett</b> mit denselben kleinen Fußspuren. Wer ihm folgt, entdeckt unter dem Turm eine <b>Abflussrinne aus Stein</b> (Zugang C).</span><span class="pill">automatisch</span></li></ul></div>
+  <div class="spot"><span class="eyebrow">Spotlight</span><span class="pill cls">Waldläuferin: Weg, Schlingen</span><span class="pill cls">Magierin: Zweigling-Kunde</span></div>
+</article>
+
+<!-- Szene 4 -->
+<article class="scene" data-s="2" data-short="4 Wachturm" data-time="35">
+  <div class="scene-head"><span class="pill">Sitzung 2</span><span class="pill">35 Min.</span><h3>Der alte Wachturm</h3></div>
+  <div class="read">Auf dem Hügel ragt ein runder Turm aus grauem Stein, halb von Efeu bedeckt. Aus den schmalen Fenstern fällt goldenes Licht. Auf der Nordseite, zum Moor hin, steht der Nebel nur ein paar Schritte hinter dem Turm wie eine graue Mauer. Vor dem Tor kauern zwei kleine Gestalten mit Speeren und reiben sich die Hände.</div>
+  <p><b>Drei Zugänge.</b> Lass die Gruppe planen (Karte „Halle“ und „Keller & Turmstube“). Teilt sie sich auf, wechsle zwischen den Gruppen.</p>
+  <div class="blk"><h4>A · Das Tor: Grizzel und Mok</h4><ul class="rolls">
+    <li><span><b>Reden.</b> Essen anbieten oder den Rindenschuh zurückgeben (gehört Grizzels Schwester): gelingt automatisch. Grizzel: „Wir haben nix Böses! Nur Licht! Die Astdinger sind draußen, jede Nacht!“</span><span class="pill dc">Überzeugen SG 12</span></li>
+    <li><span><b>Einschüchtern.</b> Die Wachen rennen zu Snirk. Er empfängt die Gruppe mit gezogenem Säbel, redet aber.</span><span class="pill dc">Einschüchtern SG 12</span></li>
+    <li><span><b>Waren sie gewarnt</b> (Schlingen, Lärm): alle SG +2.</span><span class="pill">Regel</span></li></ul>
+    <div class="callout fightc" style="margin-top:10px"><div><b>Nur bei Gewalt</b>2 Goblin-Krieger. Fällt einer, flieht der andere zu Snirk (dann Überzeugen dort SG 15).</div><button class="btn danger sm" type="button" data-enc="tor">Kampf starten</button></div></div>
+  <div class="blk"><h4>B · Die Efeumauer (Ostseite)</h4><ul class="rolls">
+    <li><span>Klettern. Mit Seil von der ersten Heldin: die anderen nur SG 8.</span><span class="pill dc">Athletik SG 12</span></li>
+    <li><span>Scheitern: 3 m abrutschen, 1W6 Wucht, Lärm warnt die Wachen.</span><span class="pill">Fail forward</span></li>
+    <li><span>Das Ostfenster führt <b>in die Turmstube</b> (Szene 6). Von innen öffnet sich die Eulentür ohne Rätsel.</span><span class="pill">Weg</span></li></ul></div>
+  <div class="blk"><h4>C · Die Abflussrinne in den Keller</h4><ul class="rolls">
+    <li><span>Durch die Rinne kriechen. Gelingt es mindestens der Hälfte, merkt oben niemand etwas.</span><span class="pill dc">Heimlichkeit (Gruppe) SG 12</span></li>
+    <li><span>Wurzeln brechen durch die Nordwand, dünner Nebel quillt heraus. <b>3 Zweiglinge</b> tun so, als wären sie Äste. Nicht erkannt: Initiative mit Nachteil.</span><span class="pill dc">Wahrnehmung SG 12</span></li>
+    <li><span><b>Heddas Truhe:</b> 2 Tränke der Heilung, Kreide, Silberspiegel (10 GM). Aufbrechen ist laut (Athletik SG 14).</span><span class="pill dc">Diebeswerkzeug SG 12</span></li>
+    <li><span><b>Falltür zur Halle</b>, von oben mit Balken verriegelt („Astdinger“ unten). Aufdrücken: Athletik SG 13, laut.</span><span class="pill dc">Fingerfertigkeit SG 12</span></li></ul>
+    <div class="callout fightc" style="margin-top:10px"><div><b>Kampf im Keller</b>3 Zweiglinge (im Nebel aktiv).</div><button class="btn danger sm" type="button" data-enc="keller">Kampf starten</button></div></div>
+  <div class="spot"><span class="eyebrow">Spotlight</span><span class="pill cls">Bardin/Kämpferin: Tor</span><span class="pill cls">Waldläuferin: Mauer</span><span class="pill cls">Schurkin: Keller</span></div>
+  <div class="callout cliff"><b>Cliffhanger · Ende Sitzung 2</b>Die Gruppe steht in der Halle. Zwölf Paar gelbe Augen starren sie an. Ein Goblin mit krummem Hut stellt sich vor die Kinder und hebt zitternd den Säbel. „Nicht näher!“</div>
+</article>
+
+<!-- Szene 5 -->
+<article class="scene" data-s="3" data-short="5 Snirk" data-time="20">
+  <div class="scene-head"><span class="pill">Sitzung 3</span><span class="pill">20 Min.</span><h3>Snirk</h3></div>
+  <div class="read">Die Halle ist rund und warm. In der Mitte hängt die Eulenlaterne an einer Kette über einer kalten Feuerstelle und taucht alles in goldenes Licht. Um sie herum liegen Decken, Körbe, nasse Kleider. Ein Dutzend Goblins drängen sich darunter, die meisten so klein wie Pip. An den Nordfenstern drückt der Nebel gegen die Läden, kommt aber nicht herein.</div>
+  <div class="blk"><h4>Was Snirk will</h4><ul class="rolls">
+    <li><span>Snirk hat Angst, nicht Hass. Er würde alles für die Kinder tun.</span><span class="pill dc">Einsicht SG 10</span></li>
+    <li><span>„Wasser kam in Höhle. Dann Astdinger. Kalt, so kalt. Licht hält Astdinger weg. Wir geben Licht zurück, Kinder sterben.“</span><span class="pill">Snirk</span></li>
+    <li><span>Er weiß nicht, dass die Laterne das Dorf schützt. Erfährt er es: „Wir wussten nicht!“</span><span class="pill">Wendung</span></li></ul></div>
+  <div class="blk"><h4>Geheimnisse · abhaken, was die Gruppe erfährt</h4><ul class="checks">
+    <li><label><input type="checkbox" data-clue="damm"><span><b>Snirk:</b> „Vor fünf Tagen. Wurzeln wie Arme. Haben Bach zugemacht. Wasser lief in Höhle.“</span></label></li>
+    <li><label><input type="checkbox" data-clue="astmann"><span><b>Grizzel:</b> „Und ein großer Astmann im Nebel! Groß wie du! Der wartet. Jede Nacht.“</span></label></li>
+    <li><label><input type="checkbox" data-clue="baum"><span><b>Oma Wurzelzahn:</b> „Der kranke Baum im Moor ist aufgewacht. Der will alles kalt.“</span></label></li>
+    <li><label><input type="checkbox" data-clue="tuer"><span><b>Snirk:</b> „Oben ist Tür mit Eulengesicht. Spricht. Wir verstehen nicht. Vielleicht ihr?“ → Szene 6</span></label></li></ul></div>
+  <div class="blk"><h4>Das Dilemma · Lösungen</h4><ul class="rolls">
+    <li><span><b>Licht teilen</b> mit Heddas Zwillingslaterne aus der Turmstube. Die beste Lösung.</span><span class="pill">Szene 6</span></li>
+    <li><span><b>Goblins kommen mit ins Dorf.</b> Vorteil, wenn die Gruppe den Schuh zurückgab oder half.</span><span class="pill dc">Überzeugen SG 13</span></li>
+    <li><span><b>Eigene Ideen</b> zulassen, wenn sie zum Hintergrund passen.</span><span class="pill">frei</span></li></ul>
+    <div class="callout fightc" style="margin-top:10px"><div><b>Nur bei Gewalt</b>Snirk und 2 Goblin-Krieger. Bei 10 TP gibt Snirk auf, die Goblins fliehen mit den Kindern nach Süden. Im Finale keine Verbündeten.</div><button class="btn danger sm" type="button" data-enc="halle">Kampf starten</button></div></div>
+  <div class="spot"><span class="eyebrow">Spotlight</span><span class="pill cls">Bardin: Verhandlung</span><span class="pill cls">Kämpferin: Stärke ohne Angriff</span><span class="pill cls">Waldläuferin: Wurzeln</span></div>
+</article>
+
+<!-- Szene 6 -->
+<article class="scene" data-s="3" data-short="6 Turmstube" data-time="15">
+  <div class="scene-head"><span class="pill">Sitzung 3</span><span class="pill">15 Min.</span><h3>Die Turmstube</h3></div>
+  <div class="read">Die Treppe endet an einer schweren Steintür. Aus ihrer Mitte blickt ein Eulengesicht mit leeren Augen. Als ihr näher kommt, knirscht der Stein, und eine dünne, alte Stimme fragt:</div>
+  <div class="handout"><div class="eyebrow">Handout · Das Rätsel der Eulentür</div><p>„Verschenkst du mich, bleib ich bei dir.<br>Teilst du mich, werd ich mehr.<br>Die Nacht fürchtet mich, der Nebel flieht vor mir.<br>Was bin ich?“</p></div>
+  <div class="blk"><h4>Lösung</h4><ul class="rolls">
+    <li><span><b>Licht</b> (auch „Heddas Spruch“). Bei „Freude“ oder „Wissen“: „Fast. Hedda hätte ein anderes Wort gewählt.“ Keine Strafe.</span><span class="pill">Antwort</span></li>
+    <li><span>Festgefahren? An Inschrift und Lied erinnern.</span><span class="pill dc">Geschichte SG 10</span></li></ul></div>
+  <div class="read">Staub tanzt im Licht, das durch das Nordfenster fällt. Auf einem Tisch liegen Werkzeuge, Glaslinsen, ein aufgeschlagenes Buch. Daneben steht eine leere Laterne, genau wie die Eulenlaterne, nur ohne Flamme.</div>
+  <div class="handout"><div class="eyebrow">Handout · Heddas Tagebuch</div><p>„Die Eulenflamme brennt nicht vom Holz, sondern vom Teilen. Halte eine leere Laterne an die volle und sprich: <em>Geteiltes Licht wird nie weniger.</em> Dann brennen zwei, und keine schwächer.</p><p>Doch hüte dich. Im Moment des Teilens flackert die Flamme, und alles, was im Nebel wartet, sieht es.“ – Hedda Eulenfeder</p></div>
+  <div class="blk"><h4>Was es hier gibt</h4><ul class="rolls">
+    <li><span><b>Tagebuch:</b> Die Magierin liest es sofort, andere mit Wurf.</span><span class="pill dc">Arkane Kunde SG 10</span></li>
+    <li><span><b>Zwillingslaterne:</b> hinunter in die Halle tragen, Eulenlaterne von der Kette nehmen, aneinanderhalten, Spruch sprechen. Das Flackern löst das Finale aus.</span><span class="pill">Auslöser</span></li>
+    <li><span><b>Nordfenster:</b> Wurzelmauer staut den Bach, dahinter die geflutete Höhle. Weit im Moor ein riesiger schwarzer Baum, aus dessen Krone Nebel steigt wie Atem.</span><span class="pill">Kapitel 2</span></li>
+    <li><span><b>Schatz:</b> Eulenbrosche (1× pro langer Rast <em>Licht</em>), Kästchen mit 25 GM.</span><span class="pill">Beute</span></li></ul></div>
+  <div class="spot"><span class="eyebrow">Spotlight</span><span class="pill cls">Magierin: Tagebuch</span><span class="pill cls">Bardin: Rätsel, Spruch</span></div>
+</article>
+
+<!-- Szene 7 -->
+<article class="scene" data-s="3" data-short="7 Finale" data-time="30">
+  <div class="scene-head"><span class="pill">Sitzung 3</span><span class="pill">30 Min.</span><span class="pill fight">Finale</span><h3>Der Rankenhirte</h3></div>
+  <div class="callout"><b>Auslöser</b>Jemand nimmt die Eulenlaterne von ihrer Kette, zum Teilen, Mitnehmen oder Tauschen. Das passiert immer, auch nach einem Kampf gegen die Goblins.</div>
+  <div class="read">Die Flamme zuckt, nur einen Herzschlag lang. Draußen knackt es, als bräche ein ganzer Wald. Das Tor splittert nach innen, und durch den Spalt drängt sich eine Gestalt aus nassen, verknoteten Ranken, so groß wie Bror, eingehüllt in ihren eigenen Nebel. Zu ihren Füßen wimmeln Zweiglinge.</div>
+  <div class="callout fightc"><div><b>Kampf</b>Rankenhirte und 4 Zweiglinge am Tor. Die Laterne wird mitgezählt.</div><button class="btn danger sm" type="button" data-enc="finale">Finale starten</button></div>
+  <div class="blk"><h4>Die Laterne als Ziel</h4><ul class="rolls">
+    <li><span>Am <b>Ende jeder Runde</b>: Steht ein Gegner direkt neben der Laterne (oder ihrer Trägerin), <b>flackert</b> sie einmal. Der Spieltisch fragt dich danach.</span><span class="pill">1× pro Runde</span></li>
+    <li><span>Nach <b>3 Flackern</b> erlischt sie (nach 4, wenn die Zwillingslaterne brennt): Nebel in der Halle, Zweiglinge überall aktiv, Heldinnen mit <b>Nachteil auf Angriffe</b>.</span><span class="pill">Folge</span></li>
+    <li><span><b>Wieder anzünden:</b> Aktion, Spruch sprechen, Fackel hineinhalten. Feuerblitz o. Ä. gelingt automatisch. Zähler auf null.</span><span class="pill dc">Charisma SG 12</span></li></ul></div>
+  <div class="blk"><h4>Die Goblins, nur wenn verbündet</h4><ul class="rolls">
+    <li><span><b>Snirks Ruf:</b> Einmal pro Runde, wann du willst: eine Heldin hat Vorteil auf ihren nächsten Angriff. „Links! Der Kleine links!“</span><span class="pill">Effekt</span></li>
+    <li><span><b>Fackelkinder:</b> Ein Zweigling, der seinen Zug neben ihnen beginnt, nimmt 1W4 Feuerschaden (verdoppelt).</span><span class="pill">Effekt</span></li></ul></div>
+  <div class="blk"><h4>Taktik & Sicherheitsnetz</h4><ul>
+    <li>Der Rankenhirte will die Laterne. Er hält die Trägerin fest, um neben ihr zu bleiben. Er trieft vor Moorwasser und ist <b>nicht</b> verwundbar gegen Feuer, die Zweiglinge schon.</li>
+    <li>Fällt eine Heldin auf 0 TP, zieht Snirk oder Oma Wurzelzahn sie aus der Gefahr. Fallen alle, trägt der Rankenhirte die erloschene Laterne ins Moor, und Kapitel 2 beginnt mit dem Verlust. Niemand stirbt in Kapitel 1.</li></ul></div>
+  <div class="read">Der Rankenhirte sackt in sich zusammen, nur noch ein Haufen nasser Äste. Sein Nebel kriecht über den Boden nach Norden, zurück zum Moor. Zwischen den Ranken liegt etwas, das pulsiert wie ein Herz: ein schwarzer Samen, groß wie eine Faust und kalt wie Eis.</div>
+</article>
+
+<!-- Ausklang -->
+<article class="scene" data-s="3" data-short="Ausklang" data-time="5">
+  <div class="scene-head"><span class="pill">Sitzung 3</span><span class="pill">5 Min.</span><h3>Ausklang</h3></div>
+  <div class="read">Ihr tragt das Licht durch den Wald nach Hause. Wo es hinfällt, weicht der Nebel zur Seite, und die Zweiglinge am Wegrand erstarren mitten im Schritt. Als ihr den Dorfplatz erreicht, ist es Nacht, und Brors Feuer brennen schon niedrig. Dann hängt die Eulenlaterne wieder am Haken, und goldenes Licht flutet das ganze Tal.</div>
+  <div class="blk"><h4>Je nach Lösung</h4><ul class="rolls">
+    <li><span>Die Goblins bleiben im Turm mit der Zwillingslaterne. Snirk verspricht, das Dorf zu warnen.</span><span class="pill">Licht geteilt</span></li>
+    <li><span>Sie ziehen in die Scheune am Dorfrand. Oma Wurzelzahn erzählt vom kranken Baum.</span><span class="pill">Goblins im Dorf</span></li>
+    <li><span>Das Dorf ist sicher. Nachts hört man im Wald Goblin-Kinder rufen.</span><span class="pill">nach Kampf</span></li></ul></div>
+  <div class="blk"><h4>Belohnung</h4><ul>
+    <li>50 GM von Mirelle, Eulenbrosche und alle Funde (Inventar).</li>
+    <li>Zurück in Weidenfurt liest Meisterin Kranich Mirelles Brief und heftet jeder Heldin das <b>erste Abzeichen</b> an: bestandene Feldprüfung.</li>
+    <li><b>Alle Heldinnen steigen auf Stufe 2.</b></li>
+    <li>Wie es weitergeht, entscheidest du: Kapitel 2 (der schwarze Samen, der Wurzeldamm, die Wurzelmutter) oder ein ganz anderes Abenteuer, zu dem die Schule die Gruppe schickt.</li></ul></div>
+</article>
+        </div>
+        <div class="scene-nav">
+          <button class="btn quiet" id="prevScene" type="button">← Zurück</button>
+          <button class="btn" id="nextScene" type="button">Weiter →</button>
+        </div>
+      </div>
+
+      <!-- Dock -->
+      <aside class="pane dock" id="paneDock" aria-label="Spieltisch">
+        <div class="dock-tabs" role="tablist">
+          <button role="tab" type="button" data-dock="kampf" aria-selected="true">Kampf</button>
+          <button role="tab" type="button" data-dock="gegner" aria-selected="false">Gegner</button>
+          <button role="tab" type="button" data-dock="wuerfel" aria-selected="false">Würfel</button>
+          <button role="tab" type="button" data-dock="ideen" aria-selected="false">Ideen</button>
+        </div>
+        <div class="dock-body" id="d-kampf"></div>
+        <div class="dock-body" id="d-gegner" hidden></div>
+        <div class="dock-body" id="d-wuerfel" hidden>
+          <div class="dieopts">
+            <label>Anzahl<input type="number" id="dCnt" value="1" min="1" max="10" inputmode="numeric"></label>
+            <label>Bonus<input type="number" id="dMod" value="0" min="-10" max="20" inputmode="numeric"></label>
+            <div class="chips" role="group" aria-label="Vorteil oder Nachteil"><button class="chip" type="button" data-adv="1" aria-pressed="false">Vorteil</button><button class="chip" type="button" data-adv="-1" aria-pressed="false">Nachteil</button></div>
+          </div>
+          <div class="dicegrid" id="dieGrid"><button class="die" data-d="4" type="button">W4</button><button class="die" data-d="6" type="button">W6</button><button class="die" data-d="8" type="button">W8</button><button class="die" data-d="10" type="button">W10</button><button class="die" data-d="12" type="button">W12</button><button class="die" data-d="20" type="button">W20</button></div>
+          <div aria-live="polite"><div class="bigres" id="bigRes">–</div><div class="muted num" id="bigDet">Tippe auf einen Würfel. Angriffe der Gegner landen auch hier.</div></div>
+          <ul class="log" id="rollLog"></ul>
+        </div>
+        <div class="dock-body" id="d-ideen" hidden></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ================= KARTEN ================= -->
+  <section class="view" id="v-karten" hidden>
+    <div class="view-head">
+      <div><span class="eyebrow">1 Feld = 1,5 m</span><h2>Karten</h2></div>
+      <button class="btn ghost" id="pvBtn" type="button" aria-pressed="false">Spielerinnen-Ansicht</button>
+    </div>
+    <p class="muted" style="max-width:70ch">Die Spielerinnen-Ansicht blendet Gegner und Geheimnisse aus. „Vollbild“ zeigt eine Karte bildschirmfüllend, gedacht für Beamer oder Fernseher.</p>
+    <div class="maps">
+      <div class="mapcard" id="mc-village"><header><h3>Dorfplatz · Szene 1</h3><button class="btn quiet sm" type="button" data-fs="mc-village">Vollbild</button></header><div class="mapbox" id="mapVillage"></div><div class="legend"><span><i class="lg-z"></i>Zweigling (Welle 1/2)</span><span><i class="lg-p"></i>Pip</span></div></div>
+      <div class="mapcard" id="mc-hall"><header><h3>Halle · Szene 5 und 7</h3><button class="btn quiet sm" type="button" data-fs="mc-hall">Vollbild</button></header><div class="mapbox" id="mapHall"></div><div class="legend"><span><i class="lg-g"></i>Goblin</span><span><i class="lg-p"></i>Fackelkinder</span><span><i class="lg-z"></i>Zweigling</span><span><i class="lg-r"></i>Rankenhirte</span></div></div>
+      <div class="mapcard" id="mc-cellar"><header><h3>Keller & Turmstube · Szene 4 und 6</h3><button class="btn quiet sm" type="button" data-fs="mc-cellar">Vollbild</button></header><div class="mapbox" id="mapCellar"></div></div>
+      <div class="mapcard" id="mc-region"><header><h3>Die Gegend</h3><button class="btn quiet sm" type="button" data-fs="mc-region">Vollbild</button></header><div class="mapbox narrow" id="mapRegion"></div><div class="legend"><span>Ohne Raster · Dorf bis Turm ca. 2 Stunden</span></div></div>
+    </div>
+  </section>
+
+  <!-- ================= HELDINNEN ================= -->
+  <section class="view" id="v-heldinnen" hidden>
+    <div class="view-head">
+      <div><span class="eyebrow">Free Rules 2024 · vereinfacht</span><h2>Heldinnen</h2></div>
+      <div class="row"><button class="btn ghost" id="heroesToFight" type="button">In den Kampf eintragen</button><button class="btn danger sm" id="invReset" type="button">Inventare zurücksetzen</button></div>
+    </div>
+    <p class="muted" style="max-width:70ch">Fünf Vorlagen auf Stufe 1. Zwei können heilen (Bardin, Waldläuferin), zwei richten Flächenschaden an (Magierin, Bardin). Das Inventar speichert dieser Browser.</p>
+    <div class="heroes" id="heroList"></div>
+  </section>
+
+  <!-- ================= WISSEN ================= -->
+  <section class="view" id="v-wissen" hidden>
+    <div class="view-head">
+      <div><span class="eyebrow">Nur für dich</span><h2>Wissen</h2></div>
+      <label class="search"><span class="sr">Wissen durchsuchen</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input type="search" id="kSearch" placeholder="Suchen: Nebel, Snirk, festgesetzt …"></label>
+    </div>
+    <div class="kgrid" id="kgrid">
+      <div class="kcard wide" data-k="hintergrund zeitstrahl hedda wurzelmutter goblins snirk diebstahl">
+        <h3>Was wirklich passiert ist</h3>
+        <ol class="timeline">
+          <li><b>Vor 100 Jahren.</b> Die Magierin <b>Hedda Eulenfeder</b>, damals Lehrerin an der Abenteuerschule in Weidenfurt, baut die Eulenlaterne und einen Wachturm am Rand des Moors. Ihr Leitspruch: <em>„Geteiltes Licht wird nie weniger.“</em></li>
+          <li><b>Seitdem.</b> Im Moor wächst die <b>Wurzelmutter</b>, ein uralter, kranker Baum. Ihr Atem ist der Nebel, sie zieht Wärme aus allem. Das Laternenlicht hält den Nebel aus dem Tal.</li>
+          <li><b>Vor 5 Tagen.</b> Ihre Wurzeln stauen den Eulenbach. Oberhalb läuft die Goblinhöhle voll, unterhalb trocknet der Bach aus. Zweiglinge vertreiben die Goblins.</li>
+          <li><b>Vor 4 Tagen.</b> Die Goblins ziehen in Heddas leeren Turm. Nachts drücken Nebel und Zweiglinge ans Gemäuer, die Kinder frieren. Die Eulentür bekommen sie nicht auf.</li>
+          <li><b>Heute bei Sonnenuntergang.</b> Snirk und zwei Goblins stehlen die Laterne, während das Dorf das Fest aufbaut. Snirk hält sie für eine gute Lampe. Pip sieht sie davonlaufen.</li>
+          <li><b>Heute Abend (Spielbeginn).</b> Die Heldinnen sind als Festgäste da und haben Bror einen Brief ihrer Schulleiterin gebracht. Der Nebel erreicht das Dorf, als sie mit Bror den leeren Haken entdecken. Die Goblins kommen kurz darauf am Turm an.</li>
+        </ol>
+      </div>
+      <div class="kcard wide" data-k="abenteuerschule weidenfurt kranich schule abzeichen heldinnen gruppe herkunft weitere abenteuer">
+        <h3>Die Abenteuerschule</h3>
+        <ul class="lines">
+          <li><b>Abenteuerschule Weidenfurt:</b> kleine Schule in der Stadt Weidenfurt, einen halben Tagesmarsch südlich vom Nebelwald. Jugendliche lernen dort Kämpfen, Zaubern, Spurenlesen, Heilen und Verhandeln. Die fünf Heldinnen sind Freundinnen aus demselben Jahrgang.</li>
+          <li><b>Meisterin Odalie Kranich:</b> Schulleiterin, früher selbst Abenteurerin, mit Bror auf Reisen. Streng, aber herzlich.</li>
+          <li><b>Warum Eulenbach:</b> Herbstferien. Kranich schickt die Gruppe mit einem Brief und einem Päckchen Gewürzkuchen zu Bror und gönnt ihr das Fest.</li>
+          <li><b>Abzeichen:</b> Wer ein echtes Abenteuer besteht, bekommt ein Abzeichen. Das erste gibt es nach Eulenbach, zusammen mit Stufe 2.</li>
+          <li><b>Für spätere Abenteuer:</b> Die Schule ist der feste Treffpunkt. Neue Aufträge kommen von Kranich oder vom Anschlagbrett im Schulhof. So lassen sich auch offizielle Abenteuer einhängen, etwa als Schulfahrt an die Küste.</li>
+        </ul>
+      </div>
+      <div class="kcard" data-k="laterne eulenflamme licht teilen anzünden linse">
+        <h3>Die Eulenlaterne</h3>
+        <ul class="lines">
+          <li><b>Eulenflamme:</b> brennt ohne Brennstoff, wärmt sanft. Mit der Linse im Dorfturm deckt sie das Tal ab, ohne Linse <b>hell im Umkreis von 9 m</b>.</li>
+          <li><b>Wo ihr helles Licht hinfällt, weicht der Nebel.</b> Normales Feuer kann das nicht.</li>
+          <li><b>Teilen:</b> leere Laterne an die volle halten, Spruch sprechen, dann brennen zwei gleich hell.</li>
+          <li><b>Erloschen:</b> Spruch sprechen und eine Flamme hineinhalten, oder ein Feuerzauber.</li>
+        </ul>
+      </div>
+      <div class="kcard" data-k="nebel zweiglinge rankenhirte feuer erstarrt">
+        <h3>Nebel, Zweiglinge, Rankenhirte</h3>
+        <ul class="lines">
+          <li><b>Zweiglinge</b> sind Triebe der Wurzelmutter und stehlen Wärme. Sie lieben Feuer, und Feuer verbrennt sie.</li>
+          <li><b>Nur im Nebel bewegen sie sich.</b> Außerhalb erstarren sie zu Ästen. Bei Tag im nebelfreien Wald sind sie harmlos.</li>
+          <li><b>Der Feuerring im Dorf</b> hält den Nebel nicht auf, aber die Zweiglinge laufen hinein und verbrennen.</li>
+          <li><b>Der Rankenhirte</b> trägt eigenen Nebel mit sich, dringt ins Laternenlicht vor und bringt Zweiglinge mit. Er wartet am Rand des Lichts um den Turm. Nass vom Moor, also nicht verwundbar gegen Feuer.</li>
+        </ul>
+      </div>
+      <div class="kcard" data-k="uhr zeit frist feuer holz nacht">
+        <h3>Die Zeit drängt</h3>
+        <p>Brors Feuerring hält heute Nacht und morgen Nacht. Die Heldinnen brechen im Morgengrauen auf. Ein Weg dauert etwa 2 Stunden. Sie kehren am Abend von Tag 2 mit der Laterne zurück.</p>
+      </div>
+      <div class="kcard" data-k="orte eulenbach nebelwald wachturm moor höhle damm">
+        <h3>Orte</h3>
+        <ul class="lines">
+          <li><b>Eulenbach:</b> etwa 200 Leute, Laternenturm auf dem Dorfplatz.</li>
+          <li><b>Nebelwald:</b> 2 Stunden bergauf nach Norden, entlang des fast trockenen Bachs.</li>
+          <li><b>Heddas Wachturm:</b> Hügel am Waldrand, Blick aufs Moor. Keller, Halle, Turmstube.</li>
+          <li><b>Wurzeldamm und Goblinhöhle:</b> nördlich vom Turm im Moor. Kapitel 2.</li>
+        </ul>
+      </div>
+      <div class="kcard wide" data-k="personen npc bror mirelle pip snirk grizzel mok oma wurzelzahn stimme">
+        <h3>Personen</h3>
+        <div class="npcs">
+          <div class="npc"><b>Meisterin Odalie Kranich</b><span class="voice">Leiterin der Abenteuerschule · ruhig, trocken, nickt anerkennend</span><q>„Ein Abenteuer fängt meistens mit einem kleinen Gefallen an.“</q></div>
+          <div class="npc"><b>Bror Eisenfaust</b><span class="voice">Zwerg, Schmied, Laternenwächter, alter Freund von Kranich · tiefe Stimme, brummt</span><q>„Ich hätte aufpassen müssen. Ich.“</q></div>
+          <div class="npc"><b>Mirelle Tannhain</b><span class="voice">Bürgermeisterin · spricht schnell, zitiert Hedda</span><q>„Licht ist das Einzige, das mehr wird, wenn man es teilt.“</q></div>
+          <div class="npc"><b>Pip</b><span class="voice">Halbling, 9 Jahre · flüstert, schaut weg</span><q>„Ich bin weggelaufen … nicht verraten, ja?“</q></div>
+          <div class="npc"><b>Snirk</b><span class="voice">Goblin-Anführer, krummer Hut · stockend, lässt Wörter weg</span><q>„Wir nehmen nur Licht.“</q></div>
+          <div class="npc"><b>Grizzel & Mok</b><span class="voice">Torwachen · Grizzel plappert, Mok nickt nur</span><q>„Nix Böses! Nur Licht!“</q></div>
+          <div class="npc"><b>Oma Wurzelzahn</b><span class="voice">älteste Goblin · zahnlos, langsam, weise</span><q>„Der kranke Baum ist aufgewacht.“</q></div>
+        </div>
+      </div>
+      <div class="kcard wide" data-k="hinweise drei hinweise schlussfolgerung">
+        <h3>Hinweise im Überblick</h3>
+        <div class="tblwrap"><table>
+          <tr><th>Schlussfolgerung</th><th>Hinweise</th></tr>
+          <tr><td><b>Laterne ist im Wachturm</b></td><td>Fußspuren · Pip · Licht auf dem Hügel · Rindenschuh</td></tr>
+          <tr><td><b>Die Diebe sind keine Monster</b></td><td>Kinderschuh · Pip: „gezittert“ · frierende Wachen · Snirk selbst</td></tr>
+          <tr><td><b>Rätsel-Antwort: Licht</b></td><td>Inschrift · Herbstlied · Mirelles Zitat · Snirk kennt die Tür</td></tr>
+          <tr><td><b>Zweiglinge nur im Nebel, Feuer schadet</b></td><td>Festfeuer · erstarrte Zweiglinge im Wald · Bror · Oma Wurzelzahn</td></tr>
+          <tr><td><b>Etwas im Moor (Kapitel 2)</b></td><td>trockener Bach · Wurzeldamm · Blick aus der Turmstube · Samen</td></tr>
+        </table></div>
+      </div>
+      <div class="kcard" data-k="regeln kern w20 vorteil nachteil angriff meisterschaft inspiration gruppenwurf überraschung rast tod todesrettungswurf">
+        <h3>Regeln 2024 · Kern</h3>
+        <ul class="lines">
+          <li><b>W20-Test</b> = Attributswurf, Rettungswurf oder Angriff: W20 + Bonus gegen SG oder RK.</li>
+          <li><b>Vorteil/Nachteil:</b> zwei W20, besseren bzw. schlechteren nehmen. Beides hebt sich auf.</li>
+          <li><b>Natürliche 20</b> beim Angriff: Treffer, Schadenswürfel doppelt. <b>1</b>: verfehlt. Bei Attributswürfen nicht.</li>
+          <li><b>Gruppenwurf:</b> Gelingt es mindestens der Hälfte, gelingt es allen.</li>
+          <li><b>Überrascht:</b> Initiative mit Nachteil.</li>
+          <li><b>Heldenhafte Inspiration:</b> einmal einen Würfel neu werfen (Menschen nach jeder langen Rast).</li>
+          <li><b>0 TP:</b> bewusstlos, Todesrettungswurf jeden Zug (ab 10 Erfolg). 3 Erfolge stabil, 3 Fehlschläge tot. 20: 1 TP. 1: zwei Fehlschläge. Heilung weckt sofort.</li>
+          <li><b>Kurze Rast</b> 1 Std.: Trefferwürfel ausgeben. <b>Lange Rast</b> 8 Std.: alles zurück.</li>
+        </ul>
+      </div>
+      <div class="kcard" data-k="zustände festgesetzt liegend kampfunfähig verängstigt bewusstlos">
+        <h3>Zustände</h3>
+        <ul class="lines">
+          <li><b>Festgesetzt:</b> Bewegung 0, Nachteil auf Angriffe gegen andere als den Festhalter. Befreien: Aktion, Athletik oder Akrobatik gegen SG.</li>
+          <li><b>Liegend:</b> Nachteil auf eigene Angriffe. Nahkampf gegen dich mit Vorteil, Fernkampf mit Nachteil. Aufstehen: halbe Bewegung.</li>
+          <li><b>Kampfunfähig:</b> keine Aktionen, Bonusaktionen, Reaktionen.</li>
+          <li><b>Verängstigt:</b> Nachteil auf Würfe, solange die Quelle sichtbar ist; nicht freiwillig näher.</li>
+          <li><b>Bewusstlos:</b> kampfunfähig, liegend, Angriffe gegen dich mit Vorteil; Nahkampftreffer sind kritisch.</li>
+        </ul>
+      </div>
+      <div class="kcard wide" data-k="fertigkeiten athletik akrobatik heimlichkeit arkane kunde geschichte nachforschungen naturkunde einsicht überlebenskunst wahrnehmung einschüchtern überzeugen fingerfertigkeit sg schwierigkeit">
+        <h3>Welche Fertigkeit? · Schwierigkeitsgrade</h3>
+        <div class="tblwrap"><table>
+          <tr><th>Fertigkeit</th><th>Attribut</th><th>Im Abenteuer</th></tr>
+          <tr><td>Athletik</td><td>ST</td><td>Efeumauer, Falltür</td></tr>
+          <tr><td>Akrobatik / Fingerfertigkeit / Heimlichkeit</td><td>GE</td><td>Ranken, Riegel, Abflussrinne</td></tr>
+          <tr><td>Arkane Kunde / Geschichte / Nachforschungen / Naturkunde</td><td>IN</td><td>Tagebuch, Hedda, Schuh, Zweiglinge</td></tr>
+          <tr><td>Einsicht / Überlebenskunst / Wahrnehmung</td><td>WE</td><td>Snirk, Spuren, Licht, getarnte Zweiglinge</td></tr>
+          <tr><td>Einschüchtern / Überzeugen</td><td>CH</td><td>Wachen, Pip, Snirk</td></tr>
+        </table></div>
+        <p class="muted" style="margin-top:8px">SG: sehr leicht 5 · leicht 10 · mittel 15 · schwer 20. In diesem Kapitel fast immer 10–13.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= VORBEREITUNG ================= -->
+  <section class="view" id="v-vorbereitung" hidden>
+    <div class="view-head"><div><span class="eyebrow">Vor der ersten Sitzung</span><h2>Vorbereiten</h2></div></div>
+    <div class="prep">
+      <div class="card"><h3 style="margin-bottom:8px">Checkliste</h3><ul class="checks" id="checklist"></ul></div>
+      <div class="card"><h3 style="margin-bottom:8px">Tischregeln</h3>
+        <ul class="checks" style="border-top:0">
+          <li><b>Eine Stimme zur Zeit.</b> Wer dran ist, redet.</li>
+          <li><b>Ja, und …</b> Ideen der anderen aufgreifen.</li>
+          <li><b>Stopp-Karte.</b> Antippen ohne Begründung, die Szene wird geändert.</li>
+          <li><b>Wir sind ein Team.</b> Niemand verrät die Gruppe.</li>
+          <li><b>Handy aus,</b> außer als Würfel-App.</li>
+          <li><b>Die Spielleitung entscheidet</b> und erklärt kurz.</li>
+        </ul></div>
+      <div class="card wide"><h3 style="margin-bottom:8px">Ablauf und Kämpfe</h3>
+        <div class="tblwrap"><table>
+          <tr><th>Sitzung</th><th>Szenen</th><th>Kämpfe (EP · Stufe bei 5 Heldinnen)</th></tr>
+          <tr><td><b>1</b></td><td>Heldinnen · 1 Herbstfest · 2 Spuren</td><td>6 Zweiglinge in 2 Wellen (150 · unter niedrig, Lernkampf)</td></tr>
+          <tr><td><b>2</b></td><td>3 Wald · 4 Wachturm</td><td>Keller: 3 Zweiglinge (75) · Tor nur bei Gewalt: 2 Goblins (100)</td></tr>
+          <tr><td><b>3</b></td><td>5 Snirk · 6 Turmstube · 7 Finale · Ausklang</td><td>Halle nur bei Gewalt: Snirk + 2 Goblins (300) · Finale: Rankenhirte + 4 Zweiglinge (300, dazu Laterne)</td></tr>
+        </table></div>
+        <p class="muted" style="margin-top:8px">Budget DMG 2024 für 5 Heldinnen auf Stufe 1: niedrig 250, mittel 375, hoch 500 EP. Lange Rast zwischen Sitzung 1 und 2. Solange die Laterne im Turm hängt, ist dort eine kurze Rast möglich.</p></div>
+      <div class="card wide"><h3 style="margin-bottom:8px">Quellen & Lizenz</h3>
+        <p>Regeln: <a href="https://www.dndbeyond.com/posts/1804-start-playing-today-with-the-2024-d-d-free-rules" target="_blank" rel="noopener">D&amp;D Free Rules 2024</a> bei D&amp;D Beyond (englisch, Konto ab 16 Jahren).</p>
+        <p class="fine">Enthält Material aus dem System Reference Document 5.2 („SRD 5.2“) von Wizards of the Coast LLC, verfügbar unter dndbeyond.com/srd, lizenziert unter Creative Commons Namensnennung 4.0 International. Zweiglinge, Rankenhirte, Snirk sowie Handlung, Orte und Namen sind eigene Erfindungen. Dungeons &amp; Dragons ist eine Marke von Wizards of the Coast.</p></div>
+    </div>
+  </section>
+  </main>
+</div>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+  var esc = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var rnd = function (n) { return Math.floor(Math.random() * n) + 1; };
+  var pick = function (a) { return a[Math.floor(Math.random() * a.length)]; };
+  var KEY = 'eulenbach3-';
+  function load(k, d) { try { var v = localStorage.getItem(KEY + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }
+  function save(k, v) { try { localStorage.setItem(KEY + k, JSON.stringify(v)); } catch (e) { /* ohne Speicher weiter */ } }
+  var toastT;
+  function toast(t) { var el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(function () { el.hidden = true; }, 2600); }
+  var wide = window.matchMedia('(min-width: 1100px)');
+
+  /* ================= Navigation ================= */
+  var VIEWS = ['spielen', 'karten', 'heldinnen', 'wissen', 'vorbereitung'];
+  function showView(id) {
+    if (VIEWS.indexOf(id) < 0) id = 'spielen';
+    VIEWS.forEach(function (v) { $('#v-' + v).hidden = v !== id; });
+    $$('.nav button').forEach(function (b) { if (b.dataset.view === id) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+    save('view', id);
+  }
+  $$('.nav button').forEach(function (b) { b.addEventListener('click', function () { showView(b.dataset.view); window.scrollTo(0, 0); }); });
+  var hash = (location.hash || '').replace('#', '');
+  showView(VIEWS.indexOf(hash) >= 0 ? hash : load('view', 'spielen'));
+
+  // Szene / Spieltisch (schmal)
+  function showPane(p) {
+    $$('.playswitch button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.pane === p)); });
+    $('#paneScene').style.display = p === 'scene' ? '' : 'none';
+    $('#paneDock').style.display = p === 'dock' ? '' : 'none';
+    save('pane', p);
+  }
+  $$('.playswitch button').forEach(function (b) { b.addEventListener('click', function () { showPane(b.dataset.pane); }); });
+  showPane(load('pane', 'scene'));
+
+  // Dock-Reiter
+  function showDock(id) {
+    $$('.dock-tabs button').forEach(function (b) { b.setAttribute('aria-selected', String(b.dataset.dock === id)); });
+    ['kampf', 'gegner', 'wuerfel', 'ideen'].forEach(function (d) { $('#d-' + d).hidden = d !== id; });
+    save('dock', id);
+  }
+  $$('.dock-tabs button').forEach(function (b) { b.addEventListener('click', function () { showDock(b.dataset.dock); }); });
+  showDock(load('dock', 'kampf'));
+  function goDock(tab) { showView('spielen'); if (!wide.matches) showPane('dock'); showDock(tab); }
+
+  /* ================= Szenen ================= */
+  var scenes = $$('#scenes .scene');
+  var cur = Math.min(load('scene', 0), scenes.length - 1);
+  function renderStepper() {
+    var html = '', lastS = 0;
+    scenes.forEach(function (s, i) {
+      var sess = s.dataset.s;
+      if (sess !== lastS) { html += '<span class="sess">Sitzung ' + sess + '</span>'; lastS = sess; }
+      html += '<button type="button" role="listitem" data-i="' + i + '"' + (i === cur ? ' aria-current="step"' : '') + (i < cur ? ' class="done"' : '') + '>' + esc(s.dataset.short) + '</button>';
+    });
+    $('#stepper').innerHTML = html;
+  }
+  function showScene(i, scroll) {
+    cur = Math.max(0, Math.min(scenes.length - 1, i));
+    scenes.forEach(function (s, j) { s.hidden = j !== cur; });
+    $('#prevScene').disabled = cur === 0;
+    $('#nextScene').disabled = cur === scenes.length - 1;
+    $('#nextScene').textContent = cur < scenes.length - 1 ? 'Weiter: ' + scenes[cur + 1].dataset.short.replace(/^\d+ /, '') + ' →' : 'Ende';
+    $('#sceneEyebrow').textContent = 'Sitzung ' + scenes[cur].dataset.s + ' · Richtzeit ' + scenes[cur].dataset.time + ' Min.';
+    renderStepper(); save('scene', cur);
+    var a = $('#stepper [aria-current="step"]'); if (a) { try { a.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch (e) {} }
+    if (scroll) { var top = $('#paneScene').getBoundingClientRect().top + window.scrollY - 80; if (window.scrollY > top) window.scrollTo(0, top); }
+  }
+  $('#stepper').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) showScene(parseInt(b.dataset.i, 10), true); });
+  $('#prevScene').addEventListener('click', function () { showScene(cur - 1, true); });
+  $('#nextScene').addEventListener('click', function () { showScene(cur + 1, true); });
+  showScene(cur);
+
+  // Hinweise abhaken
+  var clues = load('clues', {});
+  $$('[data-clue]').forEach(function (c) { c.checked = !!clues[c.dataset.clue]; c.id = 'clue-' + c.dataset.clue; });
+  $('#scenes').addEventListener('change', function (e) { var c = e.target.closest('[data-clue]'); if (!c) return; clues[c.dataset.clue] = c.checked; save('clues', clues); });
+
+  /* ================= Sitzungszeit ================= */
+  var TM = load('timer', { acc: 0, start: null });
+  var pressT;
+  function elapsed() { return TM.acc + (TM.start ? Date.now() - TM.start : 0); }
+  function renderTimer() {
+    var m = Math.floor(elapsed() / 60000), s = Math.floor(elapsed() / 1000) % 60;
+    $('#timerTxt').textContent = m + ':' + (s < 10 ? '0' : '') + s;
+    $('#timerBtn').setAttribute('aria-pressed', String(!!TM.start));
+    $('#timerBtn').classList.toggle('over', m >= 60);
+  }
+  $('#timerBtn').addEventListener('pointerdown', function () { pressT = setTimeout(function () { pressT = 'long'; TM = { acc: 0, start: null }; save('timer', TM); renderTimer(); toast('Sitzungszeit zurückgesetzt'); }, 700); });
+  $('#timerBtn').addEventListener('click', function () {
+    if (pressT === 'long') { pressT = null; return; }
+    clearTimeout(pressT);
+    if (TM.start) { TM.acc += Date.now() - TM.start; TM.start = null; } else TM.start = Date.now();
+    save('timer', TM); renderTimer();
+  });
+  setInterval(renderTimer, 1000); renderTimer();
+
+  /* ================= Würfel ================= */
+  var adv = 0, LOG = load('log', []);
+  function parse(expr) { var m = /^(\d*)W(\d+)([+-−]\d+)?$/i.exec(expr.replace(/\s/g, '').replace('−', '-')); if (!m) return null; return { n: parseInt(m[1] || '1', 10), d: parseInt(m[2], 10), mod: m[3] ? parseInt(m[3].replace('−', '-'), 10) : 0 }; }
+  function rollExpr(expr, crit) { var p = parse(expr); if (!p) return { total: 0, txt: expr }; var n = crit ? p.n * 2 : p.n, r = []; for (var i = 0; i < n; i++) r.push(rnd(p.d)); var t = r.reduce(function (a, b) { return a + b; }, 0) + p.mod; return { total: Math.max(0, t), txt: n + 'W' + p.d + ' (' + r.join('+') + ')' + (p.mod ? (p.mod > 0 ? ' + ' : ' − ') + Math.abs(p.mod) : '') }; }
+  function pushLog(html) { LOG.unshift(html); LOG = LOG.slice(0, 12); save('log', LOG); $('#rollLog').innerHTML = LOG.map(function (l) { return '<li>' + l + '</li>'; }).join(''); }
+  function showBig(total, det, cls) { var b = $('#bigRes'); b.textContent = total; b.className = 'bigres ' + (cls || ''); $('#bigDet').textContent = det; }
+  $('#rollLog').innerHTML = LOG.map(function (l) { return '<li>' + l + '</li>'; }).join('');
+  $$('#d-wuerfel [data-adv]').forEach(function (b) { b.addEventListener('click', function () { var v = parseInt(b.dataset.adv, 10); adv = adv === v ? 0 : v; $$('#d-wuerfel [data-adv]').forEach(function (x) { x.setAttribute('aria-pressed', String(parseInt(x.dataset.adv, 10) === adv)); }); }); });
+  $('#dieGrid').addEventListener('click', function (e) {
+    var b = e.target.closest('.die'); if (!b) return;
+    var d = parseInt(b.dataset.d, 10), c = Math.min(10, Math.max(1, parseInt($('#dCnt').value, 10) || 1)), mod = parseInt($('#dMod').value, 10) || 0, total, det, cls = '';
+    if (d === 20 && c === 1 && adv) { var a1 = rnd(20), a2 = rnd(20), k = adv > 0 ? Math.max(a1, a2) : Math.min(a1, a2); total = k + mod; det = 'W20 ' + (adv > 0 ? 'Vorteil' : 'Nachteil') + ' (' + a1 + ', ' + a2 + ')'; cls = k === 20 ? 'crit' : k === 1 ? 'fail' : ''; }
+    else { var r = []; for (var i = 0; i < c; i++) r.push(rnd(d)); total = r.reduce(function (x, y) { return x + y; }, 0) + mod; det = c + 'W' + d + ' (' + r.join(' + ') + ')'; if (d === 20 && c === 1) cls = r[0] === 20 ? 'crit' : r[0] === 1 ? 'fail' : ''; }
+    if (mod) det += (mod > 0 ? ' + ' : ' − ') + Math.abs(mod);
+    showBig(total, det + (cls === 'crit' ? ' · Natürliche 20!' : cls === 'fail' ? ' · Natürliche 1' : ''), cls);
+    pushLog('<b>' + total + '</b> ← ' + esc(det));
+  });
+  $('#diceBtn').addEventListener('click', function () { goDock('wuerfel'); });
+
+  /* ================= Gegner ================= */
+  var ABN = ['ST', 'GE', 'KO', 'IN', 'WE', 'CH'];
+  function amod(v) { var m = Math.floor((v - 10) / 2); return (m >= 0 ? '+' : '−') + Math.abs(m); }
+  var MON = {
+    zweigling: { name: 'Zweigling', typ: 'Kleine Pflanze · eigene Kreatur · HG 1/8 (25 EP)', ac: 13, hp: 4, hd: '1W6+1', speed: '6 m', ini: 1, ab: [6, 13, 12, 4, 8, 3],
+      notes: ['Verwundbar gegen Feuer. Blindsicht 18 m.', 'Nebelgebunden: außerhalb von Nebel kampfunfähig und erstarrt.', 'Falsches Aussehen: reglos wie ein Ast (Wahrnehmung SG 12).', 'Wärmehunger: läuft immer zum nächsten Feuer oder warmen Wesen.'],
+      acts: [{ n: 'Frostzweig', hit: 3, dmg: '1W4+1', t: 'Stich', reach: '1,5 m' }],
+      tac: 'Rennt auf Wärme zu. Fällt mit einem Treffer, das ist Absicht.' },
+    rankenhirte: { name: 'Rankenhirte', typ: 'Mittelgroße Pflanze · eigene Kreatur · HG 1 (200 EP)', ac: 12, hp: 45, hd: '7W8+14', speed: '6 m', ini: -1, ab: [15, 8, 15, 5, 10, 3],
+      notes: ['Nass vom Moor: keine Verwundbarkeit gegen Feuer. Blindsicht 18 m.', 'Nebelhülle: 3 m Nebel um ihn, auch im Laternenlicht. Zweiglinge darin sind nicht erstarrt.', 'Mehrfachangriff: zwei Rankenschläge.'],
+      acts: [{ n: 'Rankenschlag', hit: 4, dmg: '1W8+2', t: 'Wucht', reach: '3 m', extra: 'Ziel mittelgroß oder kleiner und niemand festgehalten: festgesetzt (Entkommen SG 12).' }],
+      tac: 'Will die Laterne, hält die Trägerin fest. Zwei Treffer können die Magierin (8 TP) umwerfen.' },
+    goblin: { name: 'Goblin-Krieger', typ: 'Kleines Feenwesen · SRD 5.2 · HG 1/4 (50 EP)', ac: 15, hp: 10, hd: '3W6', speed: '9 m', ini: 2, ab: [8, 15, 10, 10, 8, 8],
+      notes: ['Heimlichkeit +6, Dunkelsicht 18 m.', 'Bonusaktion Gewandte Flucht: Rückzug oder Verstecken.', '+1W4 Schaden bei Vorteil.'],
+      acts: [{ n: 'Krummsäbel', hit: 4, dmg: '1W6+2', t: 'Hieb', reach: '1,5 m' }, { n: 'Kurzbogen', hit: 4, dmg: '1W6+2', t: 'Stich', reach: '24/96 m' }],
+      tac: 'Grizzel und Mok. Fliehen, sobald einer fällt.' },
+    snirk: { name: 'Snirk', typ: 'Goblin-Anführer · SRD 5.2, angepasst · HG 1 (200 EP)', ac: 17, hp: 21, hd: '6W6', speed: '9 m', ini: 2, ab: [10, 15, 10, 10, 8, 10],
+      notes: ['Mehrfachangriff: zwei Angriffe.', 'Gewandte Flucht. +1W4 Schaden bei Vorteil.', 'Ohne „Angriff umlenken“: Snirk opfert seine Leute nicht.'],
+      acts: [{ n: 'Krummsäbel', hit: 4, dmg: '1W6+2', t: 'Hieb', reach: '1,5 m' }, { n: 'Kurzbogen', hit: 4, dmg: '1W6+2', t: 'Stich', reach: '24/96 m' }],
+      tac: 'Kämpft nur, wenn die Gruppe zuerst angreift. Gibt bei 10 TP oder weniger auf.' }
+  };
+  function actHTML(id, a, i) { return '<div class="act"><p><b>' + esc(a.n) + '</b> +' + a.hit + ', ' + esc(a.reach) + ', ' + esc(a.dmg) + ' ' + esc(a.t) + (a.extra ? '. ' + esc(a.extra) : '') + '</p><button class="btn ghost sm" type="button" data-atk="' + id + ':' + i + '">Würfeln</button></div>'; }
+  $('#d-gegner').innerHTML = Object.keys(MON).map(function (id) {
+    var m = MON[id];
+    return '<article class="sb"><header><h4>' + esc(m.name) + '</h4><button class="btn sm" type="button" data-addmon="' + id + '">+ Kampf</button></header>' +
+      '<p class="muted">' + esc(m.typ) + '</p>' +
+      '<div class="stats" style="margin:6px 0"><span class="stat">RK <b>' + m.ac + '</b></span><span class="stat">TP <b>' + m.hp + '</b> (' + m.hd + ')</span><span class="stat">Bew. <b>' + m.speed + '</b></span><span class="stat">Ini <b>' + (m.ini >= 0 ? '+' : '−') + Math.abs(m.ini) + '</b></span></div>' +
+      '<div class="abil">' + m.ab.map(function (v, i) { return '<div>' + ABN[i] + '<b>' + v + '</b>' + amod(v) + '</div>'; }).join('') + '</div>' +
+      m.notes.map(function (n) { return '<p>' + esc(n) + '</p>'; }).join('') +
+      '<div class="acts" style="margin-top:6px">' + m.acts.map(function (a, i) { return actHTML(id, a, i); }).join('') + '</div>' +
+      '<p class="muted"><b>Taktik.</b> ' + esc(m.tac) + '</p></article>';
+  }).join('');
+  function attack(spec) {
+    var p = spec.split(':'), m = MON[p[0]], a = m.acts[parseInt(p[1], 10)];
+    var d = rnd(20), tot = d + a.hit, crit = d === 20, miss = d === 1, dm = rollExpr(a.dmg, crit);
+    var line = '<b>' + esc(m.name) + ' · ' + esc(a.n) + ':</b> ' + (miss ? 'natürliche 1, verfehlt' : 'trifft RK ' + tot + (crit ? ' (KRITISCH)' : '') + ' · <b>' + dm.total + '</b> ' + esc(a.t)) + ' <span class="muted">[W20 ' + d + ' +' + a.hit + '; ' + esc(dm.txt) + ']</span>';
+    pushLog(line);
+    showBig(miss ? '1' : tot, m.name + ' · ' + a.n + (miss ? ': verfehlt' : ': ' + dm.total + ' ' + a.t + (crit ? ' (kritisch)' : '')), crit ? 'crit' : miss ? 'fail' : '');
+    toast(miss ? a.n + ': natürliche 1, verfehlt' : a.n + ': RK ' + tot + (crit ? ' kritisch' : '') + ' · ' + dm.total + ' ' + a.t);
+  }
+
+  /* ================= Heldinnen ================= */
+  var HEROES = [
+    { n: 'Kämpferin', s: 'Zwergin · Soldatin · hält die Frontlinie', ac: 19, hp: 13, ini: 0, speed: '9 m', ab: [17, 10, 15, 8, 13, 12], pp: 13,
+      sk: 'Athletik +5, Einschüchtern +3, Wahrnehmung +3, Überlebenskunst +3 · Rettungswürfe ST +5, KO +4',
+      a: ['Langschwert +5, 1W8+3 Hieb. Meisterschaft Auslaugen: Ziel hat Nachteil auf seinen nächsten Angriff.', 'Wurfspeer +5, 9/36 m, 1W6+3 Stich. Meisterschaft Verlangsamen: −3 m Bewegung.'],
+      f: ['Kampfstil Verteidigung (+1 RK, eingerechnet). Kettenpanzer und Schild.', 'Durchatmen: Bonusaktion, 1W10+1 TP. 2×, eine Ladung pro kurzer Rast zurück.', 'Zwergin: Dunkelsicht 36 m, Resistenz gegen Gift, Zwergische Zähigkeit (eingerechnet).'] },
+    { n: 'Schurkin', s: 'Halbling · Kriminelle · schleicht, trifft präzise', ac: 14, hp: 10, ini: 3, speed: '9 m', ab: [8, 17, 15, 12, 13, 10], pp: 15,
+      sk: 'Heimlichkeit +7, Wahrnehmung +5 (Expertise), Akrobatik +5, Fingerfertigkeit +5, Nachforschungen +3, Täuschen +2 · Diebeswerkzeug +5 · Rettungswürfe GE +5, IN +3',
+      a: ['Kurzschwert +5, 1W6+3 Stich. Meisterschaft Plagen: Vorteil auf den nächsten Angriff gegen das Ziel.', 'Kurzbogen +5, 24/96 m, 1W6+3 Stich. Plagen.'],
+      f: ['Hinterhältiger Angriff: 1× pro Zug +1W6, bei Vorteil oder Verbündeter neben dem Ziel.', 'Lederrüstung. Diebessprache.', 'Halbling: Glück (1 auf W20 neu würfeln), Mutig, Halbling-Gewandtheit.'] },
+    { n: 'Magierin', s: 'Hochelfin · Weise · Zauber aus der Ferne', ac: 11, hp: 8, ini: 1, speed: '9 m', ab: [8, 13, 15, 17, 12, 10], pp: 13,
+      sk: 'Arkane Kunde +5, Geschichte +5, Nachforschungen +5, Naturkunde +5, Wahrnehmung +3 · Rettungswürfe IN +5, WE +3',
+      a: ['Feuerblitz (Zaubertrick) +5, 36 m, 1W10 Feuer. Gegen Zweiglinge doppelt!', 'Kampfstab +1, 1W6−1 Wucht.'],
+      f: ['2 Zauberplätze, SG 13: Magisches Geschoss (3× 1W4+1, trifft immer), Brennende Hände (Kegel 4,5 m, GE-RW, 3W6 Feuer), Schild (Reaktion +5 RK), Magierrüstung (RK 14).', 'Zaubertricks: Feuerblitz, Licht, Magierhand, Taschenspielerei.', 'Arkane Erholung: 1× am Tag nach kurzer Rast 1 Platz zurück.', 'Elfin: Dunkelsicht 18 m, Feenblut, Trance. Liest Heddas Tagebuch ohne Wurf.'] },
+    { n: 'Bardin', s: 'Mensch · Akolythin · redet, singt, heilt', ac: 13, hp: 9, ini: 2, speed: '9 m', ab: [8, 14, 13, 10, 13, 17], pp: 13,
+      sk: 'Auftreten +5, Täuschen +5, Überzeugen +5, Einsicht +3, Wahrnehmung +3, Religion +2 · Rettungswürfe GE +4, CH +5',
+      a: ['Gehässiger Spott (Zaubertrick): WE-RW SG 13, 1W6 psychisch, Nachteil auf nächsten Angriff.', 'Dolch +4, 6/18 m, 1W4+2 Stich.'],
+      f: ['Bardische Inspiration: Bonusaktion, W6 an ein Wesen in 18 m, bei einem misslungenen W20-Test addieren. 3× pro langer Rast.', '2 Zauberplätze, SG 13: Heilendes Wort (Bonusaktion, 2W4+3), Wunden heilen (2W8+3), Donnerwoge (2W8 Schall, 3 m wegstoßen), Feenfeuer (Vorteil gegen Getroffene).', 'Mensch: Heldenhafte Inspiration nach jeder langen Rast.'] },
+    { n: 'Waldläuferin', s: 'Mensch · Soldatin · Bogen, Spuren, Natur', ac: 15, hp: 12, ini: 3, speed: '9 m', ab: [12, 17, 14, 10, 14, 8], pp: 14,
+      sk: 'Heimlichkeit +5, Überlebenskunst +4, Wahrnehmung +4, Athletik +3, Naturkunde +2, Einschüchtern +1 · Rettungswürfe ST +3, GE +5',
+      a: ['Langbogen +5, 45/180 m, 1W8+3 Stich. Meisterschaft Verlangsamen.', 'Kurzschwert +5, 1W6+3 Stich. Plagen.'],
+      f: ['Jägermal: 2× pro langer Rast ohne Platz. Bonusaktion, Konzentration, +1W6 Energie pro Treffer gegen das Ziel.', '2 Zauberplätze, SG 12: Wunden heilen (2W8+2), Gute Beeren (10 Beeren, je 1 TP).', 'Beschlagenes Leder. Mensch: Heldenhafte Inspiration nach jeder langen Rast.'] }
+  ];
+  var START_INV = {
+    'Kämpferin': ['Kettenpanzer', 'Schild', 'Langschwert', '8 Wurfspeere', 'Rucksack', 'Schlafsack', 'Seil (15 m)', 'Zunderkästchen', 'Rationen (5 Tage)'],
+    'Schurkin': ['Lederrüstung', 'Kurzschwert', 'Kurzbogen', '20 Pfeile', '2 Dolche', 'Diebeswerkzeug', 'Rucksack', 'Brecheisen', 'Rationen (5 Tage)'],
+    'Magierin': ['Kampfstab', 'Zauberbuch', 'Arkaner Fokus', 'Rucksack', 'Tinte und Feder', 'Pergament', 'Rationen (5 Tage)'],
+    'Bardin': ['Lederrüstung', '2 Dolche', 'Laute', 'Rucksack', 'Schlafsack', 'Rationen (5 Tage)'],
+    'Waldläuferin': ['Beschlagenes Leder', 'Langbogen', '20 Pfeile', 'Kurzschwert', 'Rucksack', 'Schlafsack', 'Seil (15 m)', 'Rationen (5 Tage)']
+  };
+  Object.keys(START_INV).forEach(function (k) { START_INV[k].push('Schulabzeichen (Lehrling)'); });
+  var LOOT = [['Fackel', 'Szene 2, von Bror'], ['Trank der Heilung', 'Szene 2 Mirelle, Szene 4 Truhe (2)'], ['Eulenbrosche', 'Szene 6, Turmstube'], ['Silberspiegel (10 GM)', 'Szene 4, Truhe'], ['Kreide', 'Szene 4, Truhe'], ['Heddas Tagebuch', 'Szene 6'], ['Schwarzer Samen', 'Szene 7'], ['Rindenschuh', 'Szene 2']];
+  function freshInv() { var o = {}; HEROES.forEach(function (h) { o[h.n] = { gold: 10, items: START_INV[h.n].slice() }; }); return o; }
+  var INV = load('inv', null) || freshInv();
+  $('#heroList').innerHTML = HEROES.map(function (h, hi) {
+    return '<article class="hero"><header><h3>' + esc(h.n) + '</h3><span class="muted">' + esc(h.s) + '</span></header>' +
+      '<div class="stats"><span class="stat">RK <b>' + h.ac + '</b></span><span class="stat">TP <b>' + h.hp + '</b></span><span class="stat">Ini <b>+' + h.ini + '</b></span><span class="stat">Bew. <b>' + h.speed + '</b></span><span class="stat">Passive Wahrn. <b>' + h.pp + '</b></span></div>' +
+      '<div class="abil">' + h.ab.map(function (v, i) { return '<div>' + ABN[i] + '<b>' + v + '</b>' + amod(v) + '</div>'; }).join('') + '</div>' +
+      h.a.map(function (t) { return '<p><span class="lbl">Angriff.</span> ' + esc(t) + '</p>'; }).join('') +
+      '<details class="more"><summary>Fähigkeiten und Fertigkeiten</summary>' + h.f.map(function (t) { return '<p style="margin-top:6px">' + esc(t) + '</p>'; }).join('') + '<p class="muted" style="margin-top:6px">' + esc(h.sk) + '</p></details>' +
+      '<div class="inv" data-h="' + hi + '"></div></article>';
+  }).join('');
+  function renderInv(hi) {
+    var h = HEROES[hi], st = INV[h.n], box = $('.inv[data-h="' + hi + '"]');
+    box.innerHTML = '<h4>Inventar <label class="gold"><span>GM</span><input type="number" min="0" inputmode="numeric" id="gold' + hi + '" value="' + st.gold + '" data-act="gold"></label></h4>' +
+      '<ul>' + st.items.map(function (it, ii) { return '<li>' + esc(it) + '<button type="button" data-act="rm" data-i="' + ii + '" aria-label="' + esc(it) + ' entfernen">✕</button></li>'; }).join('') + '</ul>' +
+      '<form data-act="add"><input type="text" id="item' + hi + '" placeholder="Gegenstand hinzufügen" list="lootlist" autocomplete="off"><button class="btn sm" type="submit">+</button></form>' +
+      '<div class="quick">' + LOOT.slice(0, 3).map(function (l, li) { return '<button class="chip" type="button" data-act="loot" data-l="' + li + '" title="' + esc(l[1]) + '">+ ' + esc(l[0]) + '</button>'; }).join('') + '</div>';
+  }
+  HEROES.forEach(function (h, hi) { renderInv(hi); });
+  var dl = document.createElement('datalist'); dl.id = 'lootlist'; dl.innerHTML = LOOT.map(function (l) { return '<option value="' + esc(l[0]) + '">' + esc(l[1]) + '</option>'; }).join(''); document.body.appendChild(dl);
+  $('#heroList').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-act]'); if (!b) return; var box = b.closest('.inv'); if (!box) return;
+    var hi = parseInt(box.dataset.h, 10), st = INV[HEROES[hi].n];
+    if (b.dataset.act === 'rm') st.items.splice(parseInt(b.dataset.i, 10), 1);
+    if (b.dataset.act === 'loot') { var l = LOOT[parseInt(b.dataset.l, 10)]; st.items.push(l[0]); toast(l[0] + ' → ' + HEROES[hi].n); }
+    save('inv', INV); renderInv(hi);
+  });
+  $('#heroList').addEventListener('submit', function (e) {
+    var f = e.target.closest('form[data-act="add"]'); if (!f) return; e.preventDefault();
+    var hi = parseInt(f.closest('.inv').dataset.h, 10), v = f.querySelector('input').value.trim(); if (!v) return;
+    INV[HEROES[hi].n].items.push(v); save('inv', INV); renderInv(hi); var n = document.getElementById('item' + hi); if (n) n.focus();
+  });
+  $('#heroList').addEventListener('change', function (e) { if (e.target.dataset.act !== 'gold') return; var hi = parseInt(e.target.closest('.inv').dataset.h, 10); INV[HEROES[hi].n].gold = Math.max(0, parseInt(e.target.value, 10) || 0); save('inv', INV); });
+  $('#invReset').addEventListener('click', function () {
+    var s = this;
+    if (s.dataset.armed !== '1') { s.dataset.armed = '1'; s.textContent = 'Wirklich? Nochmal tippen'; setTimeout(function () { s.dataset.armed = '0'; s.textContent = 'Inventare zurücksetzen'; }, 3000); return; }
+    INV = freshInv(); save('inv', INV); HEROES.forEach(function (h, hi) { renderInv(hi); }); s.dataset.armed = '0'; s.textContent = 'Inventare zurücksetzen'; toast('Inventare zurückgesetzt');
+  });
+
+  /* ================= Kampf ================= */
+  var COND = ['Festgesetzt', 'Liegend', 'Bewusstlos', 'Verängstigt', 'Konzentration', 'Inspiration', 'Jägermal', 'Vorteil'];
+  var ENC = {
+    fest: { name: 'Herbstfest', mons: [['zweigling', 3, 'Welle 1']], wave: { round: 3, mons: [['zweigling', 3, 'Welle 2']], text: 'Welle 2: 3 Zweiglinge aus der Ostgasse' } },
+    keller: { name: 'Keller', mons: [['zweigling', 3]], note: 'Zweiglinge nicht erkannt? Heldinnen würfeln Initiative mit Nachteil.' },
+    tor: { name: 'Tor', mons: [['goblin', 2]] },
+    halle: { name: 'Halle', mons: [['snirk', 1], ['goblin', 2]] },
+    finale: { name: 'Finale', mons: [['rankenhirte', 1], ['zweigling', 4]], lantern: true }
+  };
+  var C = load('combat', null) || { active: false, name: '', round: 1, turn: 0, list: [], lantern: null, waveDone: false, enc: null, prompt: null };
+  var undo = [];
+  var open = {};
+  function snap() { undo.push(JSON.stringify(C)); if (undo.length > 30) undo.shift(); }
+  function persist() { save('combat', C); renderCombat(); }
+  var uid = 0; function nid() { return 'c' + Date.now().toString(36) + (uid++); }
+  function addMon(id, count, label) {
+    var m = MON[id], ini = rnd(20) + m.ini; // gleiche Gegnerart würfelt gemeinsam (DMG-Empfehlung)
+    var base = m.name + (label ? ' (' + label + ')' : '');
+    for (var i = 0; i < count; i++) {
+      var nm = count > 1 ? m.name + ' ' + (C.list.filter(function (c) { return c.mon === id; }).length + 1) : m.name;
+      C.list.push({ id: nid(), name: nm, mon: id, ini: ini, hp: m.hp, max: m.hp, ac: m.ac, cond: [], ds: [0, 0], tag: label || '' });
+    }
+    return base;
+  }
+  function addHeroes() { HEROES.forEach(function (h) { if (!C.list.some(function (c) { return c.hero === h.n; })) C.list.push({ id: nid(), name: h.n, hero: h.n, ini: null, hp: h.hp, max: h.hp, ac: h.ac, cond: [], ds: [0, 0] }); }); }
+  function sortList() { var curId = C.list[C.turn] && C.list[C.turn].id; C.list.sort(function (a, b) { var ai = a.ini == null ? -99 : a.ini, bi = b.ini == null ? -99 : b.ini; return bi - ai || (a.hero ? -1 : 1); }); var j = C.list.findIndex(function (c) { return c.id === curId; }); C.turn = j < 0 ? 0 : j; }
+  function startEnc(key) {
+    snap();
+    var e = ENC[key];
+    C = { active: true, name: e.name, round: 1, turn: 0, list: [], lantern: e.lantern ? { max: load('twin', false) ? 4 : 3, out: 0 } : null, waveDone: !e.wave, enc: key, prompt: null };
+    addHeroes(); e.mons.forEach(function (m) { addMon(m[0], m[1], m[2]); }); sortList();
+    persist(); goDock('kampf');
+    toast(e.name + ': Initiative der Heldinnen eintragen' + (e.note ? ' · ' + e.note : ''));
+  }
+  $('#scenes').addEventListener('click', function (e) { var b = e.target.closest('[data-enc]'); if (b) startEnc(b.dataset.enc); });
+  function needIni() { return C.list.some(function (c) { return c.ini == null; }); }
+  function nextTurn() {
+    if (!C.list.length) return;
+    snap();
+    if (needIni()) { sortList(); }
+    var guard = 0;
+    do { C.turn += 1; if (C.turn >= C.list.length) { C.turn = 0; endRound(); } guard++; } while (C.list[C.turn] && C.list[C.turn].hp <= 0 && !C.list[C.turn].hero && guard < 50);
+    persist();
+  }
+  function endRound() {
+    C.round += 1;
+    if (C.lantern && C.lantern.out < C.lantern.max) C.prompt = 'lantern';
+    var e = ENC[C.enc];
+    if (e && e.wave && !C.waveDone && C.round >= e.wave.round) C.prompt = C.prompt || 'wave';
+  }
+  function hpChange(id, delta) {
+    var c = C.list.find(function (x) { return x.id === id; }); if (!c) return; snap();
+    if (delta < 0 && c.hp === 0 && c.hero) { c.ds[1] = Math.min(3, c.ds[1] + 1); toast(c.name + ': Schaden bei 0 TP = 1 Fehlschlag'); }
+    var was = c.hp; c.hp = Math.max(0, Math.min(c.max, c.hp + delta));
+    if (c.hp > 0) c.ds = [0, 0];
+    if (was > 0 && c.hp === 0) toast(c.hero ? c.name + ' fällt! Sicherheitsnetz beachten.' : c.name + ' besiegt');
+    persist();
+  }
+  function renderCombat() {
+    var box = $('#d-kampf'), chip = $('#combatChip');
+    if (!C.active && !C.list.length) {
+      chip.hidden = true;
+      box.innerHTML = '<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14.5 17.5L3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2"/></svg><p><b>Kein Kampf aktiv.</b><br>Starte eine Begegnung aus der Szene oder hier:</p></div>' +
+        '<div class="presets">' + Object.keys(ENC).map(function (k) { return '<button class="btn quiet" type="button" data-start="' + k + '">' + ENC[k].name + '</button>'; }).join('') + '</div>' +
+        '<div class="addrow"><button class="btn ghost sm" type="button" data-act="heroes">Nur Heldinnen eintragen</button></div>';
+      return;
+    }
+    var now = C.list[C.turn];
+    chip.hidden = false; chip.textContent = 'Runde ' + C.round + (now ? ' · ' + now.name : '');
+    var html = '<div class="cbar"><div class="round">Runde ' + C.round + '<small>' + esc(C.name || 'Kampf') + (now ? ' · am Zug: ' + esc(now.name) : '') + '</small></div>' +
+      '<button class="btn quiet sm" type="button" data-act="undo"' + (undo.length ? '' : ' disabled') + ' title="Rückgängig">↶</button>' +
+      '<button class="btn" type="button" data-act="next">Nächster Zug</button></div>';
+    if (needIni()) html += '<div class="banner ember"><span><b>Initiative eintragen:</b> Die Spielerinnen würfeln selbst (W20 + Ini). Dann sortieren.</span><button class="btn ember sm" type="button" data-act="sort">Sortieren</button></div>';
+    if (C.prompt === 'wave') html += '<div class="banner danger"><span>' + esc(ENC[C.enc].wave.text) + '</span><span class="row"><button class="btn danger sm" type="button" data-act="wave">Hinzufügen</button><button class="btn quiet sm" type="button" data-act="dismiss">Später</button></span></div>';
+    if (C.prompt === 'lantern') html += '<div class="banner ember"><span><b>Rundenende:</b> Steht ein Gegner direkt neben der Laterne?</span><span class="row"><button class="btn ember sm" type="button" data-act="flicker">Ja, flackern</button><button class="btn quiet sm" type="button" data-act="dismiss">Nein</button></span></div>';
+    if (C.lantern) {
+      var L = C.lantern, outAll = L.out >= L.max;
+      html += '<div class="lantern"><span class="lbl">' + (outAll ? 'Laterne erloschen! Nebel: Nachteil auf Angriffe' : 'Laterne · ' + (L.max - L.out) + '/' + L.max) + '</span>';
+      for (var i = 0; i < L.max; i++) html += '<button class="flame" type="button" data-flame="' + i + '" aria-pressed="' + (i >= L.max - L.out) + '" aria-label="Flamme ' + (i + 1) + '"><svg viewBox="0 0 20 26"><path class="f" d="M10 1c5 6 8 10 8 15a8 8 0 0 1-16 0c0-5 3-9 8-15z"/></svg></button>';
+      html += '<button class="chip" type="button" data-act="twin" aria-pressed="' + (L.max === 4) + '">Zwilling</button><button class="btn ghost sm" type="button" data-act="relight">Entzündet</button></div>';
+    }
+    html += '<ul class="combatants">' + C.list.map(function (c, i) {
+      var pct = Math.round(c.hp / c.max * 100), isOpen = open[c.id], m = c.mon && MON[c.mon];
+      var s = '<li class="cmb' + (i === C.turn ? ' now' : '') + (c.hp <= 0 ? ' down' : '') + '" data-id="' + c.id + '"><div class="cmb-row">' +
+        '<input class="ini' + (c.ini == null ? ' need' : '') + '" type="number" inputmode="numeric" id="ini-' + c.id + '" value="' + (c.ini == null ? '' : c.ini) + '" placeholder="?" data-act="ini" aria-label="Initiative ' + esc(c.name) + '">' +
+        '<button class="cmb-main" type="button" data-act="toggle" aria-expanded="' + !!isOpen + '"><span class="cmb-name"><span>' + esc(c.name) + '</span><span class="ac">RK ' + c.ac + '</span></span>' +
+        '<span class="hpbar"><i class="' + (pct <= 25 ? 'low' : '') + '" style="width:' + pct + '%"></i></span>' +
+        (c.cond.length ? '<span class="conds">' + c.cond.map(function (k) { return '<span class="pill">' + esc(k) + '</span>'; }).join('') + '</span>' : '') + '</button>' +
+        '<span class="hp">' + c.hp + '<small>/' + c.max + '</small></span></div>';
+      s += '<div class="cmb-x"' + (isOpen ? '' : ' hidden') + '>' +
+        '<div class="hpctl"><input type="number" inputmode="numeric" min="1" id="amt-' + c.id + '" placeholder="Betrag" aria-label="Betrag"><button class="btn danger sm" type="button" data-act="dmg">Schaden</button><button class="btn ghost sm" type="button" data-act="heal">Heilen</button><button class="btn quiet sm" type="button" data-act="del" title="Entfernen">✕</button></div>' +
+        '<div class="chips">' + COND.map(function (k) { return '<button class="chip" type="button" data-cond="' + k + '" aria-pressed="' + (c.cond.indexOf(k) >= 0) + '">' + k + '</button>'; }).join('') + '</div>';
+      if (c.hero && c.hp === 0) s += '<div class="dsave"><span>Erfolge ' + [0, 1, 2].map(function (k) { return '<button class="pip ok" type="button" data-ds="0:' + k + '" aria-pressed="' + (k < c.ds[0]) + '" aria-label="Erfolg ' + (k + 1) + '"></button>'; }).join('') + '</span><span>Fehlschläge ' + [0, 1, 2].map(function (k) { return '<button class="pip bad" type="button" data-ds="1:' + k + '" aria-pressed="' + (k < c.ds[1]) + '" aria-label="Fehlschlag ' + (k + 1) + '"></button>'; }).join('') + '</span></div>';
+      if (m) s += '<div class="acts">' + m.acts.map(function (a, ai) { return actHTML(c.mon, a, ai); }).join('') + '<p class="muted" style="margin:0;font-size:.88rem">' + esc(m.notes[0]) + '</p></div>';
+      return s + '</div></li>';
+    }).join('') + '</ul>';
+    html += '<form class="addrow" id="addForm" autocomplete="off"><input type="text" id="addName" placeholder="Weitere Figur" aria-label="Name"><input type="number" id="addHp" placeholder="TP" inputmode="numeric" aria-label="TP"><input type="number" id="addAc" placeholder="RK" inputmode="numeric" aria-label="RK"><button class="btn sm" type="submit">+</button></form>';
+    html += '<div class="addrow"><button class="btn danger sm" type="button" data-act="end">Kampf beenden</button></div>';
+    box.innerHTML = html;
+  }
+  $('#d-kampf').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    var li = b.closest('.cmb'), id = li && li.dataset.id, c = id && C.list.find(function (x) { return x.id === id; });
+    if (b.dataset.start) return startEnc(b.dataset.start);
+    if (b.dataset.atk) return attack(b.dataset.atk);
+    if (b.dataset.flame != null) { snap(); var i = parseInt(b.dataset.flame, 10), L = C.lantern; var lit = L.max - L.out; L.out = i < lit ? L.max - i : L.max - i - 1; return persist(); }
+    if (b.dataset.cond && c) { snap(); var k = b.dataset.cond, p = c.cond.indexOf(k); if (p >= 0) c.cond.splice(p, 1); else c.cond.push(k); return persist(); }
+    if (b.dataset.ds && c) { snap(); var d = b.dataset.ds.split(':'), w = parseInt(d[0], 10), n = parseInt(d[1], 10) + 1; c.ds[w] = c.ds[w] === n ? n - 1 : n; if (c.ds[0] === 3) toast(c.name + ' ist stabil'); if (c.ds[1] === 3) toast('Sicherheitsnetz: ' + c.name + ' wird in Sicherheit gezogen'); return persist(); }
+    switch (b.dataset.act) {
+      case 'next': return nextTurn();
+      case 'sort': snap(); sortList(); C.turn = 0; return persist();
+      case 'undo': if (undo.length) { C = JSON.parse(undo.pop()); save('combat', C); renderCombat(); } return;
+      case 'toggle': open[id] = !open[id]; return renderCombat();
+      case 'dmg': case 'heal': { var v = parseInt($('#amt-' + id).value, 10); if (!v || v < 1) { toast('Erst einen Betrag eintragen'); var f = $('#amt-' + id); if (f) f.focus(); return; } return hpChange(id, b.dataset.act === 'dmg' ? -v : v); }
+      case 'del': snap(); C.list = C.list.filter(function (x) { return x.id !== id; }); if (C.turn >= C.list.length) C.turn = 0; return persist();
+      case 'wave': snap(); addMon(ENC[C.enc].wave.mons[0][0], ENC[C.enc].wave.mons[0][1], ENC[C.enc].wave.mons[0][2]); C.waveDone = true; C.prompt = null; sortList(); toast('Welle 2 ist da'); return persist();
+      case 'flicker': snap(); C.lantern.out = Math.min(C.lantern.max, C.lantern.out + 1); C.prompt = null; if (C.lantern.out >= C.lantern.max) toast('Die Laterne erlischt! Nebel füllt die Halle.'); return persist();
+      case 'dismiss': snap(); if (C.prompt === 'wave') C.waveDone = false; C.prompt = null; return persist();
+      case 'twin': snap(); C.lantern.max = C.lantern.max === 4 ? 3 : 4; save('twin', C.lantern.max === 4); return persist();
+      case 'relight': snap(); C.lantern.out = 0; toast('Die Laterne brennt wieder'); return persist();
+      case 'heroes': snap(); C.active = true; C.name = 'Kampf'; addHeroes(); return persist();
+      case 'end':
+        if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Wirklich beenden? Nochmal tippen'; setTimeout(function () { if (b.isConnected) { b.dataset.armed = '0'; b.textContent = 'Kampf beenden'; } }, 3000); return; }
+        snap(); C = { active: false, name: '', round: 1, turn: 0, list: [], lantern: null, waveDone: false, enc: null, prompt: null }; open = {}; persist(); toast('Kampf beendet. Mit ↶ rückgängig im nächsten Kampf nicht mehr möglich.'); return;
+    }
+  });
+  $('#d-kampf').addEventListener('change', function (e) {
+    if (e.target.dataset.act !== 'ini') return;
+    var c = C.list.find(function (x) { return x.id === e.target.closest('.cmb').dataset.id; }); if (!c) return;
+    snap(); c.ini = e.target.value === '' ? null : parseInt(e.target.value, 10); save('combat', C);
+    if (!needIni()) { sortList(); C.turn = 0; persist(); toast('Reihenfolge steht. Los geht’s!'); }
+  });
+  $('#d-kampf').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && e.target.id && e.target.id.indexOf('amt-') === 0) { e.preventDefault(); hpChange(e.target.id.slice(4), -(parseInt(e.target.value, 10) || 0)); }
+  });
+  $('#d-kampf').addEventListener('submit', function (e) {
+    if (e.target.id !== 'addForm') return; e.preventDefault();
+    var n = $('#addName').value.trim(); if (!n) return; snap();
+    var hp = Math.max(1, parseInt($('#addHp').value, 10) || 10);
+    C.active = true; C.list.push({ id: nid(), name: n, ini: null, hp: hp, max: hp, ac: parseInt($('#addAc').value, 10) || 10, cond: [], ds: [0, 0] }); persist();
+  });
+  $('#d-gegner').addEventListener('click', function (e) {
+    var a = e.target.closest('[data-atk]'); if (a) return attack(a.dataset.atk);
+    var b = e.target.closest('[data-addmon]'); if (!b) return;
+    snap(); C.active = true; if (!C.name) C.name = 'Kampf'; var nm = addMon(b.dataset.addmon, 1); sortList(); persist(); toast(nm + ' im Kampf');
+  });
+  $('#combatChip').addEventListener('click', function () { goDock('kampf'); });
+  $('#heroesToFight').addEventListener('click', function () { snap(); C.active = true; if (!C.name) C.name = 'Kampf'; addHeroes(); persist(); goDock('kampf'); });
+  document.addEventListener('keydown', function (e) {
+    if (e.target.matches('input, textarea')) return;
+    if ((e.key === 'n' || e.key === 'N') && C.list.length) { nextTurn(); }
+  });
+  renderCombat();
+
+  /* ================= Ideen ================= */
+  var V = ['Alrik', 'Brenna', 'Cedric', 'Dorla', 'Eldrin', 'Finja', 'Garrick', 'Hilde', 'Ivo', 'Jelka', 'Korin', 'Lenja', 'Marek', 'Nilla', 'Orwin', 'Perta', 'Quirin', 'Runa', 'Thea'];
+  var N = ['Tannhain', 'Eichenfuß', 'Steinbrecher', 'Kupferkessel', 'Moosbart', 'Windmühl', 'Brückner', 'Honigtau', 'Eisenhut', 'Fuchsbau'];
+  var GEN = [
+    ['Dorfbewohnerin / Dorfbewohner', function () { return pick(V) + ' ' + pick(N) + ', ' + pick(['Bäcker', 'Fischerin', 'Holzfäller', 'Wirtin', 'Gerber', 'Hirtin', 'Schreiber', 'Fuhrfrau']) + '. ' + pick(['Spricht sehr leise.', 'Lacht nach jedem Satz.', 'Misstraut allen Goblins.', 'Erzählt gern Gerüchte.', 'Kann nicht lügen.', 'Hat Hedda als Kind gekannt (sagt sie).', 'Hat heute Nacht kein Auge zugetan.']); }],
+    ['Gerücht im Dorf', function () { return pick(['„Hedda hat den Turm gebaut, um das Moor im Auge zu behalten.“', '„Im Moor steht ein Baum, älter als das Dorf.“', '„Der Eulenbach war noch nie so trocken.“', '„Die Goblins wohnen doch in der Höhle am Moor.“', '„Die Eulenflamme brennt seit hundert Jahren ohne Holz.“', '„Wer im Nebel pfeift, lockt die Astdinger an.“']); }],
+    ['Unterwegs im Wald', function () { return pick(['Eine Nebelsenke versperrt den Pfad. Außen herum dauert es länger, ist aber sicher.', 'Ein Fuchs trägt eine Goblin-Mütze im Maul.', 'Ein umgestürzter Baum mit schwarzen, nassen Wurzeln.', 'Ein Rabe folgt der Gruppe ein Stück.', 'Ein Pilzkreis. Harmlos, aber unheimlich.', 'Frische Goblin-Spuren zum Hügel.']); }],
+    ['Geräusch im Nebel', function () { return pick(['Knacken wie Zweige unter Füßen.', 'Tropfen, immer im gleichen Takt.', 'Ein Kinderlachen, weit weg. Ein Goblin-Kind?', 'Holz reibt auf Stein.', 'Gar nichts. Das ist das Unheimliche.']); }],
+    ['In den Taschen', function () { return pick(['3 Silbermünzen und ein Knopf.', 'Ein halbes Brot vom Fest.', 'Ein Kiesel mit Loch.', 'Eine angenagte Haselnuss.', 'Ein Zettel: „Laterne putzen!“']); }]
+  ];
+  $('#d-ideen').innerHTML = GEN.map(function (g, i) { return '<div class="gen"><header><h4>' + esc(g[0]) + '</h4><button class="btn ghost sm" type="button" data-g="' + i + '">Würfeln</button></header><output id="gen' + i + '">' + esc(g[1]()) + '</output></div>'; }).join('');
+  $('#d-ideen').addEventListener('click', function (e) { var b = e.target.closest('[data-g]'); if (b) { var i = parseInt(b.dataset.g, 10); $('#gen' + i).textContent = GEN[i][1](); } });
+
+  /* ================= Wissen-Suche ================= */
+  $('#kSearch').addEventListener('input', function () {
+    var q = this.value.trim().toLowerCase();
+    $$('#kgrid .kcard').forEach(function (k) { k.hidden = q && (k.dataset.k + ' ' + k.textContent).toLowerCase().indexOf(q) < 0; });
+  });
+
+  /* ================= Vorbereitung ================= */
+  var CHECK = ['Bereich Wissen einmal ganz lesen', 'Heldinnen-Bögen für 5 Spielerinnen bereitlegen', 'Würfel: pro Spielerin W20, W6, W8 (oder Apps)', 'Karte Dorfplatz auf Beamer, Fernseher oder Papier', 'Marker für Heldinnen und 6 Zweiglinge', 'Herbstlied-Zeile und Inschrift laut üben', 'Stopp-Karte und Tischregeln vorbereiten', 'Für Sitzung 3: Handouts Rätsel und Tagebuch'];
+  var done = load('check', {});
+  $('#checklist').innerHTML = CHECK.map(function (t, i) { return '<li><label><input type="checkbox" id="chk' + i + '" data-i="' + i + '"' + (done[i] ? ' checked' : '') + '><span>' + esc(t) + '</span></label></li>'; }).join('');
+  $('#checklist').addEventListener('change', function (e) { done[e.target.dataset.i] = e.target.checked; save('check', done); });
+
+  /* ================= Karten ================= */
+  var CS = 32;
+  var DEFS = '<defs><pattern id="fog" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(30)"><line x1="0" y1="0" x2="0" y2="10" class="m-hatch"/></pattern><pattern id="water" width="12" height="6" patternUnits="userSpaceOnUse"><path d="M0 3 Q3 0 6 3 T12 3" fill="none" class="m-water-l"/></pattern></defs>';
+  function gridL(ox, oy, cols, rows) { var s = ''; for (var x = 0; x <= cols; x++) s += '<line class="m-grid" x1="' + (ox + x * CS) + '" y1="' + oy + '" x2="' + (ox + x * CS) + '" y2="' + (oy + rows * CS) + '"/>'; for (var y = 0; y <= rows; y++) s += '<line class="m-grid" x1="' + ox + '" y1="' + (oy + y * CS) + '" x2="' + (ox + cols * CS) + '" y2="' + (oy + y * CS) + '"/>'; return s + '<rect class="m-frame" x="' + ox + '" y="' + oy + '" width="' + cols * CS + '" height="' + rows * CS + '"/>'; }
+  function R(ox, oy, x, y, w, h, cls, label, sub) { var s = '<rect class="' + cls + '" x="' + (ox + x * CS) + '" y="' + (oy + y * CS) + '" width="' + w * CS + '" height="' + h * CS + '" rx="2"/>'; if (label) s += '<text class="m-txt b" x="' + (ox + (x + w / 2) * CS) + '" y="' + (oy + (y + h / 2) * CS + (sub ? -2 : 4)) + '" text-anchor="middle">' + label + '</text>'; if (sub) s += '<text class="m-txt s" x="' + (ox + (x + w / 2) * CS) + '" y="' + (oy + (y + h / 2) * CS + 12) + '" text-anchor="middle">' + sub + '</text>'; return s; }
+  function TX(ox, oy, x, y, t, cls, anchor) { return '<text class="m-txt ' + (cls || '') + '" x="' + (ox + x * CS) + '" y="' + (oy + y * CS) + '" text-anchor="' + (anchor || 'middle') + '">' + t + '</text>'; }
+  function MK(ox, oy, x, y, type, t, dm) { var cx = ox + x * CS, cy = oy + y * CS, r = type === 'r' ? 13 : 11; return '<g' + (dm ? ' class="dm"' : '') + '><circle class="mk-' + type + '" cx="' + cx + '" cy="' + cy + '" r="' + r + '"/><text class="mk-t' + (type === 'r' ? ' light' : '') + '" x="' + cx + '" y="' + cy + '">' + t + '</text></g>'; }
+  function SVG(w, h, body, label) { return '<svg viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="' + label + '">' + DEFS + body + '</svg>'; }
+  (function () {
+    var ox = 20, oy = 26, s = '';
+    s += R(ox, oy, 5, 0, 3, 2.2, 'm-path') + R(ox, oy, 13, 4, 3, 3, 'm-path') + gridL(ox, oy, 16, 12);
+    s += R(ox, oy, 5, 0, 3, 2, 'm-fog') + R(ox, oy, 14, 4, 2, 3, 'm-fog');
+    s += R(ox, oy, 0, 0, 4, 3, 'm-bld', 'Rathaus') + R(ox, oy, 10, 0, 6, 2, 'm-bld', 'Gasthaus Zur Eule') + R(ox, oy, 0, 4, 2, 4, 'm-bld', 'Häuser') + R(ox, oy, 0, 9, 3, 3, 'm-bld', 'Bäckerei') + R(ox, oy, 12, 8, 4, 4, 'm-bld', 'Schmiede', 'Bror') + R(ox, oy, 7, 5, 2, 2, 'm-bld', 'Turm', 'Laterne');
+    s += R(ox, oy, 4, 9, 4, 2, 'm-wood', 'Bühne') + R(ox, oy, 9, 3, 2, 1, 'm-wood', 'Stand') + R(ox, oy, 3, 3, 2, 1, 'm-wood', 'Karren');
+    s += '<circle class="m-thin" cx="' + (ox + 4.5 * CS) + '" cy="' + (oy + 6.5 * CS) + '" r="' + (0.8 * CS) + '"/>' + TX(ox, oy, 4.5, 6.6, 'Brunnen', 's');
+    s += '<circle class="m-fire" cx="' + (ox + 10.5 * CS) + '" cy="' + (oy + 7.5 * CS) + '" r="' + (0.9 * CS) + '"/>' + TX(ox, oy, 10.5, 9.0, 'Festfeuer', 'b');
+    s += TX(ox, oy, 6.5, -0.25, 'Waldpfad nach Norden · Nebel', 's') + '<text class="m-txt s" transform="translate(' + (ox + 16 * CS + 12) + ',' + (oy + 5.5 * CS) + ') rotate(90)" text-anchor="middle">Ostgasse · Nebel</text>';
+    s += MK(ox, oy, 5.5, 9.5, 'p', 'P', false);
+    s += MK(ox, oy, 5.5, 0.5, 'z', '1', true) + MK(ox, oy, 6.5, 1.5, 'z', '1', true) + MK(ox, oy, 7.5, 0.5, 'z', '1', true) + MK(ox, oy, 15.5, 4.5, 'z', '2', true) + MK(ox, oy, 14.5, 5.5, 'z', '2', true) + MK(ox, oy, 15.5, 6.5, 'z', '2', true);
+    s += '<g class="dm">' + TX(ox, oy, 8.6, 2.8, 'Welle 1 → Feuer', 'dmt', 'start') + TX(ox, oy, 15.9, 3.7, 'Welle 2 (Runde 3)', 'dmt', 'end') + '</g>';
+    $('#mapVillage').innerHTML = SVG(16 * CS + 60, 12 * CS + 40, s, 'Karte Dorfplatz');
+  })();
+  (function () {
+    var ox = 20, oy = 26, s = '', cx = ox + 5 * CS, cy = oy + 5 * CS, r = 4.6 * CS;
+    s += gridL(ox, oy, 10, 10) + '<circle class="m-wall" cx="' + cx + '" cy="' + cy + '" r="' + r + '"/>';
+    s += '<rect x="' + (cx - 0.75 * CS) + '" y="' + (cy + r - 6) + '" width="' + 1.5 * CS + '" height="12" fill="var(--map-ground)"/>' + TX(ox, oy, 5, 10.55, 'Tor (Zugang A)', 'b');
+    [[-0.707, -0.707], [0.707, -0.707], [-1, 0], [1, 0]].forEach(function (d) { s += '<rect class="m-wood" x="' + (cx + d[0] * r - 7) + '" y="' + (cy + d[1] * r - 7) + '" width="14" height="14"/>'; });
+    s += '<circle class="m-fireo" cx="' + cx + '" cy="' + cy + '" r="' + 0.9 * CS + '"/><circle class="m-fire" cx="' + cx + '" cy="' + cy + '" r="7"/>' + TX(ox, oy, 5, 4.0, 'Laterne', 'b');
+    s += R(ox, oy, 1.5, 3.5, 2, 3, 'm-path') + TX(ox, oy, 2.5, 5.1, 'Lager', 's') + R(ox, oy, 6.2, 2.0, 1.8, 1.4, 'm-wood', 'Treppe', 'Eulentür') + R(ox, oy, 3, 7, 1, 1, 'm-wood') + TX(ox, oy, 2.9, 7.6, 'Falltür', 's', 'end');
+    s += MK(ox, oy, 5, 3.3, 'g', 'S') + MK(ox, oy, 2, 3, 'g', 'G') + MK(ox, oy, 2, 7, 'g', 'G') + MK(ox, oy, 3.2, 4.5, 'g', 'O') + MK(ox, oy, 7.5, 5.5, 'p', 'F') + MK(ox, oy, 2.5, 6, 'p', 'F');
+    s += MK(ox, oy, 5, 8.6, 'r', 'R', true) + MK(ox, oy, 4, 8.2, 'z', 'Z', true) + MK(ox, oy, 6, 8.2, 'z', 'Z', true) + MK(ox, oy, 3.6, 9.2, 'z', 'Z', true) + MK(ox, oy, 6.4, 9.2, 'z', 'Z', true);
+    s += '<g class="dm"><circle cx="' + cx + '" cy="' + (oy + 8.6 * CS) + '" r="' + 2 * CS + '" fill="url(#fog)" stroke="var(--danger)" stroke-dasharray="4 4"/>' + TX(ox, oy, 8.7, 9.8, 'Nebelhülle 3 m', 'dmt') + '</g>';
+    s += TX(ox, oy, 10, -0.3, 'S Snirk · G Grizzel/Mok · O Oma · F Fackelkinder', 's', 'end');
+    $('#mapHall').innerHTML = SVG(10 * CS + 40, 10 * CS + 50, s, 'Karte Halle');
+  })();
+  (function () {
+    var oy = 26, a = 20, b = 20 + 6 * CS + 50, s = '';
+    s += TX(a, oy, 3, -0.3, 'Keller', 'b') + TX(b, oy, 3, -0.3, 'Turmstube (oben)', 'b') + gridL(a, oy, 6, 6) + gridL(b, oy, 6, 6);
+    s += '<rect class="m-wall" x="' + a + '" y="' + oy + '" width="' + 6 * CS + '" height="' + 6 * CS + '"/><rect x="' + (a - 6) + '" y="' + (oy + 2.5 * CS) + '" width="12" height="' + CS + '" fill="var(--map-ground)"/>' + TX(a, oy, 0.15, 2.3, 'Rinne (C)', 's', 'start');
+    s += R(a, oy, 0, 0, 6, 1.3, 'm-fog') + TX(a, oy, 3, 0.85, 'Wurzeln · Nebel', 's') + R(a, oy, 4, 4, 1.5, 1, 'm-wood', 'Truhe') + R(a, oy, 2.5, 3, 1, 1, 'm-wood') + TX(a, oy, 3, 4.6, 'Falltür', 's');
+    s += MK(a, oy, 1.5, 1.6, 'z', 'Z', true) + MK(a, oy, 3.5, 1.7, 'z', 'Z', true) + MK(a, oy, 5, 2.4, 'z', 'Z', true);
+    s += '<rect class="m-wall" x="' + b + '" y="' + oy + '" width="' + 6 * CS + '" height="' + 6 * CS + '"/><rect class="m-wood" x="' + (b + 2.3 * CS) + '" y="' + (oy - 7) + '" width="' + 1.4 * CS + '" height="14"/>' + TX(b, oy, 3, 0.75, 'Fenster Nord (Aussicht)', 's');
+    s += '<rect class="m-wood" x="' + (b + 6 * CS - 7) + '" y="' + (oy + 1.5 * CS) + '" width="14" height="' + CS + '"/>' + TX(b, oy, 5.6, 1.35, 'Ost (B)', 's', 'end');
+    s += '<rect x="' + (b + 2.5 * CS) + '" y="' + (oy + 6 * CS - 6) + '" width="' + CS + '" height="12" fill="var(--map-ground)"/>' + TX(b, oy, 3, 6.65, 'Eulentür', 'b');
+    s += R(b, oy, 1, 2, 2.5, 1.2, 'm-bld', 'Tisch', 'Tagebuch') + R(b, oy, 4, 2, 1.2, 1.2, 'm-wood') + TX(b, oy, 4.6, 3.75, 'Zwillings-', 's') + TX(b, oy, 4.6, 4.15, 'laterne', 's');
+    s += '<g class="dm">' + R(b, oy, 0.5, 4.5, 1.3, 1, 'm-wood') + TX(b, oy, 1.15, 4.75, '25 GM', 'dmt') + TX(b, oy, 1.15, 5.15, 'Brosche', 'dmt') + '</g>';
+    $('#mapCellar').innerHTML = SVG(12 * CS + 90, 6 * CS + 56, s, 'Karte Keller und Turmstube');
+  })();
+  (function () {
+    var s = '<rect x="10" y="10" width="380" height="120" fill="url(#fog)" stroke="var(--muted)" stroke-dasharray="4 4"/><text class="m-txt b" x="24" y="32">Moor</text>';
+    s += '<g class="dm"><path class="m-tree" d="M78 112 L84 70 L70 52 L86 60 L88 40 L94 62 L108 48 L98 72 L104 112 Z"/><text class="m-txt dmt" x="91" y="126" text-anchor="middle">Wurzelmutter (Kap. 2)</text></g>';
+    s += '<path class="m-stream" d="M300 14 C 290 60, 300 100, 270 160"/><path class="m-stream dry" d="M270 160 C 245 210, 260 260, 230 310 S 200 420, 205 470"/>';
+    s += '<ellipse class="m-water" cx="300" cy="120" rx="46" ry="22"/><text class="m-txt" x="250" y="118" text-anchor="end">Goblinhöhle</text><text class="m-txt s" x="250" y="131" text-anchor="end">(überflutet)</text>';
+    s += '<path d="M252 160 L288 160 M256 152 L262 168 M268 150 L272 168 M282 152 L278 168" class="m-thin" stroke-width="3"/><text class="m-txt" x="296" y="178">Wurzeldamm</text><text class="m-txt b" x="60" y="300">Nebelwald</text>';
+    for (var i = 0; i < 26; i++) { var x = 30 + (i * 53) % 330, y = 150 + ((i * 37) % 260); if (Math.abs(x - 215) < 40) continue; if (x > 60 && x < 200 && y > 165 && y < 225) continue; s += '<path d="M' + x + ' ' + (y + 12) + ' L' + (x + 7) + ' ' + y + ' L' + (x + 14) + ' ' + (y + 12) + ' Z" class="m-thin"/>'; }
+    s += '<circle cx="215" cy="190" r="30" class="m-path"/><circle cx="215" cy="190" r="9" class="m-bld"/><text class="m-txt b" x="165" y="194" text-anchor="end">Heddas Wachturm</text><text class="m-txt s" x="165" y="208" text-anchor="end">auf dem Hügel</text>';
+    s += '<path class="m-dash" d="M205 455 C 190 400, 230 340, 215 290 S 205 230, 213 200"/><text class="m-txt s" x="150" y="350" text-anchor="end">Waldpfad · ca. 2 Std.</text>';
+    s += '<rect x="170" y="452" width="70" height="40" class="m-bld" rx="4"/><text class="m-txt b" x="205" y="476" text-anchor="middle">Eulenbach</text><text class="m-txt s" x="250" y="470">Bach (fast trocken)</text><text class="m-txt b" x="380" y="32" text-anchor="end">N ↑</text>';
+    $('#mapRegion').innerHTML = SVG(400, 505, s, 'Übersichtskarte');
+  })();
+  var pv = load('pv', false);
+  function setPV(v) { pv = v; document.body.classList.toggle('playerview', v); $('#pvBtn').setAttribute('aria-pressed', String(v)); $('#pvBtn').textContent = v ? 'Spielerinnen-Ansicht an' : 'Spielerinnen-Ansicht'; if (v) $('#pvBtn').classList.remove('ghost'); else $('#pvBtn').classList.add('ghost'); save('pv', v); }
+  $('#pvBtn').addEventListener('click', function () { setPV(!pv); }); setPV(pv);
+  $$('[data-fs]').forEach(function (b) { b.addEventListener('click', function () { var el = document.getElementById(b.dataset.fs); if (document.fullscreenElement) { document.exitFullscreen().catch(function () {}); return; } if (el.requestFullscreen) el.requestFullscreen().catch(function () { toast('Vollbild ist hier nicht verfügbar'); }); else toast('Vollbild ist hier nicht verfügbar'); }); });
+})();
+</script>
+
+</html>
