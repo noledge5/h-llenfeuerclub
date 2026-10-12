@@ -50,12 +50,13 @@
     }
   });
   $$('#scenes .handout').forEach(function (h, i) { h.dataset.ho = 'h' + i; var b = document.createElement('button'); b.type = 'button'; b.className = 'btn sm ho-btn'; b.textContent = 'Auf Beamer zeigen'; h.appendChild(b); });
-  function loadSceneMap(i) { var cf = sceneCfg(i); if (!cf.maps.length) return Promise.resolve(); if (cf.maps.indexOf(VT.key) >= 0 && VT.ras) return Promise.resolve(); return loadVtt(cf.maps[0]); }
+  // first: the scene starts with its first map; otherwise any map of the scene that is already shown stays
+  function loadSceneMap(i, first) { var cf = sceneCfg(i); if (!cf.maps.length) return Promise.resolve(); if (VT.ras && (first ? VT.key === cf.maps[0] : cf.maps.indexOf(VT.key) >= 0)) return Promise.resolve(); return loadVtt(cf.maps[0]); }
   function startScene(i) {
     showScene(i, true);
     var cf = sceneCfg(i);
     applyScenePlan(i, C.active);
-    loadSceneMap(i).then(function () {
+    loadSceneMap(i, true).then(function () {
       var st = cf.stage || (cf.mood ? 'mood' : (cf.maps.length ? 'map' : 'title'));
       if (!pwAlive()) toast('Szene gestartet. Der Beamer ist noch nicht verbunden (Knopf oben).'); else toast('Szene gestartet: Ton und Beamer sind umgestellt');
       PB.handout = null; $$('.ho-btn').forEach(function (b) { b.textContent = 'Auf Beamer zeigen'; });
@@ -279,6 +280,6 @@
     LIB = all.map(function (r) { return { id: r.id, kind: r.kind, name: r.name, size: r.size, w: r.w, h: r.h }; });
     buildTpl(); injectToggles(); renderSceneBars(); renderFxBar(); beamerStatus(); auUi();
     BOOTED = true; prevC = null; EV.combatChanged();
-    var cf = sceneCfg(cur); return loadVtt(cf.maps[0] || 'village');
+    var cf = sceneCfg(cur); return loadVtt(cf.maps.indexOf(ST.vtMap) >= 0 ? ST.vtMap : (cf.maps[0] || 'village'));
   }).then(function () { setStage(PB.stage); renderVttUi(); var v = load('view', 'spielen'); onView(v); }).catch(function (er) { try { console.error(er); } catch (e) {} });
   window.addEventListener('beforeunload', function () { if (NOSAVE) return; saveST(); save('maps', MAPS); });

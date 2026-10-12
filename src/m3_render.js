@@ -32,7 +32,7 @@
   }
   // g: 2D-Kontext; M: Kartenmodell; A: {base, dm, fog}; o: {dm, scale, tx, ty, fogAlpha, now, ruler, hide}
   function evDrawMap(g, M, A, o) {
-    var P = M.P, ox = M.ox, oy = M.oy;
+    var P = M.P, ox = M.ox, oy = M.oy, Q = M.cell || P || 60; // Q: size of one square for figures, also on maps without a grid
     g.save(); g.setTransform(o.scale, 0, 0, o.scale, o.tx, o.ty);
     if (A.base) g.drawImage(A.base, 0, 0, M.w, M.h);
     if (M.grid && P > 0) {
@@ -48,7 +48,7 @@
     for (var i = 0; i < toks.length; i++) {
       var t = toks[i];
       if (!o.dm && (t.hid || t.t === 'dm')) continue;
-      var s = t.s || 1, r = (P || 60) * 0.44 * s, cx = ox + (t.x + s / 2) * (P || 60), cy = oy + (t.y + s / 2) * (P || 60);
+      var s = t.s || 1, r = Q * 0.44 * s, cx = ox + (t.x + s / 2) * Q, cy = oy + (t.y + s / 2) * Q;
       g.save();
       if (t.hid && o.dm) g.globalAlpha = 0.5;
       if (t.t === 'dm') {
@@ -74,12 +74,12 @@
     var pg = M.pings || [];
     for (var j = 0; j < pg.length; j++) {
       var a = (o.now - pg[j].t0) / 1600; if (a < 0 || a > 1) continue;
-      for (var q = 0; q < 3; q++) { var aa = a - q * 0.18; if (aa < 0) continue; g.beginPath(); g.arc(pg[j].x, pg[j].y, (P || 60) * (0.3 + aa * 2.2), 0, 6.2832); g.lineWidth = Math.max(3, (P || 60) * 0.07); g.strokeStyle = 'rgba(232,199,106,' + (1 - aa) + ')'; g.stroke(); }
+      for (var q = 0; q < 3; q++) { var aa = a - q * 0.18; if (aa < 0) continue; g.beginPath(); g.arc(pg[j].x, pg[j].y, Q * (0.3 + aa * 2.2), 0, 6.2832); g.lineWidth = Math.max(3, Q * 0.07); g.strokeStyle = 'rgba(232,199,106,' + (1 - aa) + ')'; g.stroke(); }
     }
     if (o.ruler) {
-      var R = o.ruler; g.strokeStyle = '#e8c76a'; g.lineWidth = Math.max(3, (P || 60) * 0.06); g.setLineDash([(P || 60) * 0.2, (P || 60) * 0.12]);
+      var R = o.ruler; g.strokeStyle = '#e8c76a'; g.lineWidth = Math.max(3, Q * 0.06); g.setLineDash([Q * 0.2, Q * 0.12]);
       g.beginPath(); g.moveTo(R.x1, R.y1); g.lineTo(R.x2, R.y2); g.stroke(); g.setLineDash([]);
-      [[R.x1, R.y1], [R.x2, R.y2]].forEach(function (p) { g.beginPath(); g.arc(p[0], p[1], (P || 60) * 0.12, 0, 6.2832); g.fillStyle = '#e8c76a'; g.fill(); g.strokeStyle = '#1c130b'; g.lineWidth = 2; g.stroke(); });
+      [[R.x1, R.y1], [R.x2, R.y2]].forEach(function (p) { g.beginPath(); g.arc(p[0], p[1], Q * 0.12, 0, 6.2832); g.fillStyle = '#e8c76a'; g.fill(); g.strokeStyle = '#1c130b'; g.lineWidth = 2; g.stroke(); });
     }
     g.restore();
   }

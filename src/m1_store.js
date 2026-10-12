@@ -67,7 +67,10 @@
     tower:   { name: 'Turmstube', src: 'mapCellar', crop: [242, 0, 232, 248], cols: 6, rows: 6, ox: 20, oy: 26, cs: 32 },
     region:  { name: 'Die Gegend', src: 'mapRegion', crop: [0, 0, 400, 505], cols: 0, rows: 0, ox: 0, oy: 0, cs: 32 }
   };
-  var SVG_CSS = '.m-grid{stroke:#7a5a2c55;stroke-width:1}.m-frame{fill:none;stroke:#6b4f2a;stroke-width:1.5}.m-bld{fill:#cdb682;stroke:#3b2a16;stroke-width:1.5}.m-wall{fill:none;stroke:#3b2a16;stroke-width:5}.m-thin{fill:none;stroke:#3b2a16;stroke-width:1.5}.m-path{fill:#cdb682;opacity:.55}.m-fog{fill:url(#fog)}.m-water{fill:url(#water);stroke:#6b4f2a;stroke-width:1}.m-fire{fill:#d9822b}.m-fireo{fill:none;stroke:#d9822b;stroke-width:2}.m-wood{fill:#d2b87a;stroke:#9a5a1c;stroke-width:1.5}.m-txt{fill:#2a1d12;font-family:Georgia,serif;font-size:12px}.m-txt.s{font-size:10.5px;fill:#5c4630}.m-txt.b{font-weight:700}.m-txt.dmt{fill:#7b1f1f;font-weight:700}.mk-z{fill:#e9d9b5;stroke:#7b1f1f;stroke-width:2.5}.mk-g{fill:#e9d9b5;stroke:#2d5a3d;stroke-width:2.5}.mk-p{fill:#e9d9b5;stroke:#b4641c;stroke-width:2.5}.mk-r{fill:#7b1f1f}.mk-t{font-family:Georgia,serif;font-size:11px;font-weight:700;text-anchor:middle;dominant-baseline:central;fill:#2a1d12}.mk-t.light{fill:#e9d9b5}.m-hatch{stroke:#8a6d4b;stroke-width:1.2}.m-water-l{stroke:#6b4f2a;stroke-width:1}.m-stream{fill:none;stroke:#6b4f2a;stroke-width:3}.m-stream.dry{stroke-dasharray:3 5}.m-dash{fill:none;stroke:#3b2a16;stroke-width:2;stroke-dasharray:6 5}.m-tree{fill:#3b2a16}';
+  var SVG_CSS = '.m-grid{stroke:#7a5a2c55;stroke-width:1}.m-frame{fill:none;stroke:#6b4f2a;stroke-width:1.5}.m-bld{fill:#cdb682;stroke:#3b2a16;stroke-width:1.5}.m-wall{fill:none;stroke:#3b2a16;stroke-width:5}.m-thin{fill:none;stroke:#3b2a16;stroke-width:1.5}.m-path{fill:#cdb682;opacity:.55}.m-fog{fill:url(#fog)}.m-water{fill:url(#water);stroke:#6b4f2a;stroke-width:1}.m-fire{fill:#d9822b}.m-fireo{fill:none;stroke:#d9822b;stroke-width:2}.m-wood{fill:#d2b87a;stroke:#9a5a1c;stroke-width:1.5}.m-txt{fill:#2a1d12;font-family:"EB Garamond",Georgia,serif;font-size:13px}.m-txt.s{font-size:11.5px;fill:#5c4630}.m-txt.b{font-weight:700}.m-txt.dmt{fill:#7b1f1f;font-weight:700}.mk-z{fill:#e9d9b5;stroke:#7b1f1f;stroke-width:2.5}.mk-g{fill:#e9d9b5;stroke:#2d5a3d;stroke-width:2.5}.mk-p{fill:#e9d9b5;stroke:#b4641c;stroke-width:2.5}.mk-r{fill:#7b1f1f}.mk-t{font-family:"EB Garamond",Georgia,serif;font-size:11px;font-weight:700;text-anchor:middle;dominant-baseline:central;fill:#2a1d12}.mk-t.light{fill:#e9d9b5}.m-hatch{stroke:#8a6d4b;stroke-width:1.2}.m-water-l{stroke:#6b4f2a;stroke-width:1}.m-stream{fill:none;stroke:#6b4f2a;stroke-width:3}.m-stream.dry{stroke-dasharray:3 5}.m-dash{fill:none;stroke:#3b2a16;stroke-width:2;stroke-dasharray:6 5}.m-tree{fill:#3b2a16}';
+  // The sketches use CSS variables of the page; as a picture they cannot see them.
+  var SKETCH_COLORS = { '--map-ground': '#e9d9b5', '--danger': '#7b1f1f', '--muted': '#6b4f2a', '--accent': '#2d5a3d', '--ember': '#b4641c' };
+  function sketchFont() { var m = /@font-face\{font-family:'EB Garamond';[^}]*font-style:normal[^}]*\}/.exec((document.getElementById('fontfaces') || {}).textContent || ''); return m ? m[0] : ''; }
   var builtinCache = {};
   // liefert { base: Canvas, dm: Canvas|null, w, h, cols, rows, ox, oy }
   function builtinRaster(key) {
@@ -79,13 +82,18 @@
         var clone = src.cloneNode(true);
         clone.setAttribute('viewBox', B.crop.join(' ')); clone.setAttribute('width', W); clone.setAttribute('height', H);
         clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        // The grid is drawn on the canvas (so it can be switched off). Markers of the sketch and their legend are for the DM only:
+        // the figures of the Spieltisch replace them for the players.
+        Array.prototype.forEach.call(clone.querySelectorAll('.m-grid, .m-frame'), function (n) { n.remove(); });
+        Array.prototype.forEach.call(clone.querySelectorAll('g'), function (n) { var c = n.firstElementChild; if (c && /\bmk-/.test(c.getAttribute('class') || '')) n.setAttribute('class', 'dm'); });
+        Array.prototype.forEach.call(clone.querySelectorAll('text'), function (t) { if (/^S Snirk ·/.test(t.textContent)) { var w = document.createElementNS('http://www.w3.org/2000/svg', 'g'); w.setAttribute('class', 'dm'); t.parentNode.insertBefore(w, t); w.appendChild(t); } });
         Array.prototype.forEach.call(clone.querySelectorAll('.dm'), function (n) { if (!onlyDm) n.remove(); });
         if (onlyDm) {
           // alles außer den DM-Gruppen entfernen (Defs behalten)
           Array.prototype.slice.call(clone.children).forEach(function (n) { if (n.tagName !== 'defs' && !(n.getAttribute('class') || '').match(/\bdm\b/)) n.remove(); });
         }
-        var st = document.createElementNS('http://www.w3.org/2000/svg', 'style'); st.textContent = SVG_CSS; clone.insertBefore(st, clone.firstChild);
-        var d = new XMLSerializer().serializeToString(clone);
+        var st = document.createElementNS('http://www.w3.org/2000/svg', 'style'); st.textContent = sketchFont() + SVG_CSS; clone.insertBefore(st, clone.firstChild);
+        var d = new XMLSerializer().serializeToString(clone).replace(/var\((--[a-z-]+)\)/g, function (m, k) { return SKETCH_COLORS[k] || '#000'; });
         var im = new Image();
         im.onload = function () {
           var c = document.createElement('canvas'); c.width = W; c.height = H; var g = c.getContext('2d');
@@ -96,7 +104,7 @@
         im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(d);
       });
     }
-    var hasDm = !!src.querySelector('.dm');
+    var hasDm = !!src.querySelector('.dm, circle[class^="mk-"]');
     builtinCache[key] = Promise.all([mk(false), hasDm ? mk(true) : Promise.resolve(null)]).then(function (r) {
       return { base: r[0], dm: r[1], w: W, h: H, cols: B.cols, rows: B.rows, ox: Math.round((B.ox - 0) * k), oy: Math.round(B.oy * k), P: B.cols ? P_IDEAL : 0 };
     });

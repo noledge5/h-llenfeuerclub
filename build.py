@@ -25,7 +25,8 @@ head=f'''<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Eulenbach DM-Helfer 2.0</title>
 <style id="fontfaces">{ff}</style>
-<style>[hidden]{{display:none!important}}</style>
+<style>[hidden]{{display:none!important}}.beamer-boot body{{visibility:hidden;background:#000}}</style>
+<script>if(location.hash==='#beamer')document.documentElement.className='beamer-boot'</script>
 <style>
 {tok}
 {root}
@@ -55,6 +56,7 @@ def patch(old,new,count=1):
     global js
     assert js.count(old)>=1, old
     js=js.replace(old,new,count)
+patch("'use strict';\n","'use strict';\n  if (location.hash === '#beamer') { window.addEventListener('load', function () { var html = playerDoc(); document.open(); document.write(html); document.close(); }); return; }\n")
 patch("var wide = window.matchMedia('(min-width: 1100px)');","var wide = window.matchMedia('(min-width: 1100px)');\n  var EV = { dice: function () {}, combatChanged: function () {}, scene: function () {} };")
 patch("var VIEWS = ['spielen', 'karten', 'heldinnen', 'wissen', 'vorbereitung'];","var VIEWS = ['spielen', 'tisch', 'sound', 'karten', 'heldinnen', 'wissen', 'vorbereitung'];")
 patch("save('view', id);\n  }","save('view', id);\n    if (typeof onView === 'function') onView(id);\n  }")
