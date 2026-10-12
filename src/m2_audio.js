@@ -7,8 +7,13 @@
     if (AU.ctx) return AU.ctx;
     var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
     var c = AU.ctx = new AC();
-    AU.master = c.createGain(); AU.master.gain.value = ST.mute ? 0 : ST.vol / 100; AU.master.connect(c.destination);
-    ['music', 'atmo', 'fx'].forEach(function (k) { var g = c.createGain(); g.gain.value = 1; g.connect(AU.master); AU.bus[k] = g; });
+    AU.master = c.createGain(); AU.master.gain.value = ST.mute ? 0 : Math.pow(ST.vol / 100, 1.6);
+    // soft limiter: quiet sounds pass unchanged, peaks bend towards 0.73 and can never clip
+    var lim = c.createWaveShaper(), curve = new Float32Array(2049); for (var q = 0; q < 2049; q++) { var x = q / 1024 - 1; curve[q] = Math.tanh(1.1 * x) / 1.1; }
+    lim.curve = curve; lim.oversample = '2x'; AU.master.connect(lim); lim.connect(c.destination);
+    ['music', 'atmo', 'fx'].forEach(function (k) { var g = c.createGain(); g.gain.value = k === 'fx' ? 0.75 : 1; g.connect(AU.master); AU.bus[k] = g; });
+    var rl = c.sampleRate * 3, ir = c.createBuffer(2, rl, c.sampleRate); for (var ch = 0; ch < 2; ch++) { var dd = ir.getChannelData(ch); for (var i2 = 0; i2 < rl; i2++) dd[i2] = (Math.random() * 2 - 1) * Math.pow(1 - i2 / rl, 2.6); }
+    AU.ir = ir;
     var n = c.createBuffer(1, c.sampleRate * 3, c.sampleRate), d = n.getChannelData(0), b0 = 0, b1 = 0, b2 = 0;
     for (var i = 0; i < d.length; i++) { var w = Math.random() * 2 - 1; b0 = 0.99765 * b0 + w * 0.099046; b1 = 0.963 * b1 + w * 0.2965164; b2 = 0.57 * b2 + w * 1.0526913; d[i] = (b0 + b1 + b2 + w * 0.1848) * 0.18; }
     AU.noise = n;
@@ -66,14 +71,46 @@
       return function () { alive = false; };
     }
   };
-  var PADS = { 'syn:pad-day': [196, 247, 294, 392], 'syn:pad-night': [110, 131, 165, 196], 'syn:pad-fight': [98, 117, 147, 185], 'syn:pad-wonder': [220, 277, 330, 440] };
-  function synPad(id, out) {
-    var c = AU.ctx, notes = PADS[id], oscs = [], lfo = c.createOscillator(), lg = c.createGain(), f = c.createBiquadFilter(), g = c.createGain();
-    f.type = 'lowpass'; f.frequency.value = id === 'syn:pad-fight' ? 520 : 900; g.gain.value = 0.2; f.connect(g); g.connect(out);
-    lfo.frequency.value = 0.09; lg.gain.value = 220; lfo.connect(lg); lg.connect(f.frequency); lfo.start();
-    notes.forEach(function (n, i) { [0, 1].forEach(function (d) { var o = c.createOscillator(); o.type = i % 2 ? 'triangle' : 'sawtooth'; o.frequency.value = n * (d ? 1.004 : 1); var og = c.createGain(); og.gain.value = 0.13; o.connect(og); og.connect(f); o.start(); oscs.push(o); }); });
-    if (id === 'syn:pad-fight') { var pu = c.createOscillator(), pg = c.createGain(); pu.type = 'square'; pu.frequency.value = 49; pg.gain.value = 0; var pl = c.createOscillator(), plg = c.createGain(); pl.frequency.value = 1.6; plg.gain.value = 0.06; pl.connect(plg); plg.connect(pg.gain); pu.connect(pg); pg.connect(f); pu.start(); pl.start(); oscs.push(pu, pl); }
-    return function () { try { oscs.forEach(function (o) { o.stop(); }); lfo.stop(); } catch (e) {} };
+  /* Music beds: a chord progression with slowly crossfading voices, a few plucked notes, an echo and a reverb.
+     "Spannung" has a low heartbeat instead of plucks. Semitones are counted from the root note of the mood. */
+  var MOODS = {
+    'syn:pad-day': { root: 146.83, prog: [[0, 7, 12, 16], [-5, 2, 7, 11], [-3, 4, 9, 12], [-7, 0, 5, 9]], len: 9, wave: ['triangle', 'sawtooth'], cut: 1300, vol: 0.55, pluck: { scale: [0, 2, 4, 7, 9], oct: [12, 24], every: [1.8, 4.5], type: 'triangle', dec: 1.6, vol: 0.5 } },
+    'syn:pad-night': { root: 110, prog: [[0, 7, 12, 15], [-4, 3, 8, 12], [-2, 5, 10, 14], [-5, 2, 7, 10]], len: 11, wave: ['sawtooth', 'sine'], cut: 700, vol: 0.5, pluck: { scale: [0, 3, 5, 7, 10], oct: [24], every: [4, 9], type: 'sine', dec: 3, vol: 0.4 } },
+    'syn:pad-wonder': { root: 130.81, prog: [[0, 7, 11, 16], [-3, 4, 7, 12], [-7, 0, 4, 9], [-5, 2, 7, 12]], len: 8, wave: ['triangle', 'sine'], cut: 2600, vol: 0.5, pluck: { scale: [0, 2, 4, 7, 9], oct: [12, 24, 36], every: [0.5, 1.5], type: 'sine', dec: 1.2, vol: 0.4 } },
+    'syn:pad-fight': { root: 73.42, prog: [[0, 6, 12, 15], [1, 7, 13, 18], [-2, 4, 10, 15], [3, 9, 15, 18]], len: 7, wave: ['sawtooth', 'square'], cut: 900, vol: 0.45, pulse: 112 }
+  };
+  function musicBed(id, out) {
+    var c = AU.ctx, cfg = MOODS[id], nodes = [], alive = true, step = 0, beat = 0;
+    var bus = c.createGain(); bus.gain.value = cfg.vol; bus.connect(out);
+    var f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = cfg.cut; f.Q.value = 0.7; f.connect(bus);
+    var rv = c.createConvolver(); rv.buffer = AU.ir; var rg = c.createGain(); rg.gain.value = 0.45; rv.connect(rg); rg.connect(bus);
+    var echo = c.createDelay(1.5), eg = c.createGain(); echo.delayTime.value = 0.42; eg.gain.value = 0.33; echo.connect(eg); eg.connect(echo); eg.connect(bus);
+    var pl = c.createGain(); pl.connect(bus); pl.connect(echo); pl.connect(rv); f.connect(rv);
+    var lfo = c.createOscillator(), lg = c.createGain(); lfo.frequency.value = 0.07; lg.gain.value = cfg.cut * 0.35; lfo.connect(lg); lg.connect(f.frequency); lfo.start(); nodes.push(lfo);
+    function hz(semi) { return cfg.root * Math.pow(2, semi / 12); }
+    function voice(type, f0, t, att, hold, rel, peak, dest) {
+      var o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.value = f0; o.detune.value = (Math.random() - 0.5) * 12;
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(peak, t + att); g.gain.setValueAtTime(peak, t + att + hold); g.gain.linearRampToValueAtTime(0.0001, t + att + hold + rel);
+      o.connect(g); g.connect(dest); o.start(t); o.stop(t + att + hold + rel + 0.05); nodes.push(o);
+      o.onended = function () { var i = nodes.indexOf(o); if (i >= 0) nodes.splice(i, 1); try { g.disconnect(); } catch (e) {} };
+    }
+    function chord(t) { var ch = cfg.prog[step++ % cfg.prog.length]; ch.forEach(function (sm) { cfg.wave.forEach(function (w, j) { voice(w, hz(sm) * (j ? 1.003 : 1), t, cfg.len * 0.4, cfg.len * 0.45, cfg.len * 0.4, 0.34 / ch.length, f); }); }); }
+    function pluck(t) { var p = cfg.pluck, sm = p.scale[Math.floor(Math.random() * p.scale.length)] + p.oct[Math.floor(Math.random() * p.oct.length)]; voice(p.type, hz(sm), t, 0.008, 0, p.dec, p.vol * 0.5, pl); }
+    function pulse(t, n) { // heartbeat: a thump on every beat, stronger on the first of four
+      var o = c.createOscillator(), g = c.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.14);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(n % 4 === 0 ? 0.9 : 0.6, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+      o.connect(g); g.connect(bus); o.start(t); o.stop(t + 0.35); nodes.push(o); o.onended = function () { var i = nodes.indexOf(o); if (i >= 0) nodes.splice(i, 1); };
+      if (n % 8 === 6) voice('sawtooth', hz(30 + (n % 3)), t, 1.4, 0.2, 1.4, 0.05, f); // a rising sting now and then
+    }
+    var nextChord = c.currentTime + 0.05, nextPluck = c.currentTime + cfg.len * 0.45, nextBeat = c.currentTime + 0.2;
+    function tick() {
+      if (!alive) return; var now = c.currentTime;
+      while (nextChord < now + 1) { chord(nextChord); nextChord += cfg.len; }
+      if (cfg.pluck) while (nextPluck < now + 1) { pluck(nextPluck); nextPluck += cfg.pluck.every[0] + Math.random() * (cfg.pluck.every[1] - cfg.pluck.every[0]); }
+      if (cfg.pulse) while (nextBeat < now + 1) { pulse(nextBeat, beat++); nextBeat += 60 / cfg.pulse; }
+    }
+    tick(); var timer = setInterval(tick, 250);
+    return function () { alive = false; clearInterval(timer); nodes.slice().forEach(function (o) { try { o.stop(); } catch (e) {} }); };
   }
   function synFx(id) {
     var c = AU.ctx, t = c.currentTime, out = AU.bus.fx;
@@ -96,7 +133,7 @@
   /* ----- Kanäle ----- */
   function mkSource(id, bus) {
     // liefert Promise<{stop(), el?}> ; Schleife
-    if (id.indexOf('syn:pad') === 0) { var g0 = AU.ctx.createGain(); g0.connect(bus); var st = synPad(id, g0); return Promise.resolve({ gain: g0, stop: st }); }
+    if (MOODS[id]) { var g0 = AU.ctx.createGain(); g0.connect(bus); var st = musicBed(id, g0); return Promise.resolve({ gain: g0, stop: st }); }
     if (SYN_LOOPS[id]) { var g1 = AU.ctx.createGain(); g1.connect(bus); var st1 = SYN_LOOPS[id](g1); return Promise.resolve({ gain: g1, stop: st1 }); }
     return getUrl(id).then(function (u) {
       if (!u) return null;
@@ -118,9 +155,9 @@
     if (!id) return;
     mkSource(id, AU.bus.music).then(function (h) { if (!h) { toast('Musik nicht gefunden'); return; } if (tok !== musicToken) { h.stop(); return; } AU.music.h = h; fadeIn(h.gain, 1, sec); });
   }
-  function setAtmo(ids) {
-    if (!auInit()) return; ids = (ids || []).slice(0, 3);
-    Object.keys(AU.atmo).forEach(function (k) { if (ids.indexOf(k) < 0) { fadeOut(AU.atmo[k].h, 2); delete AU.atmo[k]; } });
+  function setAtmo(ids, sec) {
+    if (!auInit()) return; ids = (ids || []).filter(Boolean).slice(0, 3); // empty slots stay empty
+    Object.keys(AU.atmo).forEach(function (k) { if (ids.indexOf(k) < 0) { fadeOut(AU.atmo[k].h, sec == null ? 2 : sec); delete AU.atmo[k]; } });
     ids.forEach(function (id) {
       if (AU.atmo[id]) return; var ent = AU.atmo[id] = { h: null };
       mkSource(id, AU.bus.atmo).then(function (h) { if (!h) { delete AU.atmo[id]; return; } if (AU.atmo[id] !== ent) { h.stop(); return; } ent.h = h; fadeIn(h.gain, ST.avol[id] == null ? 0.6 : ST.avol[id], 2); });
@@ -145,8 +182,8 @@
     if (!AU.ctx) return; var t = AU.ctx.currentTime, m = AU.master.gain;
     m.cancelScheduledValues(t); m.setValueAtTime(m.value, t); m.linearRampToValueAtTime(0.0001, t + 2);
     setTimeout(function () {
-      playMusic(null, 0.01); setAtmo([]);
-      setTimeout(function () { setMaster(); }, 300);
+      playMusic(null, 0.01); setAtmo([], 0.01);
+      setTimeout(function () { setMaster(); }, 600); // after the sources are stopped (fadeOut stops them 120 ms later)
     }, 2100);
     toast('Alles wird ausgeblendet …');
   }

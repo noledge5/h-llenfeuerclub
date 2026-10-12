@@ -124,6 +124,7 @@
   (function () {
     var bar = $('#vttTools'), z = document.createElement('span');
     z.innerHTML = '<span class="sep"></span><button class="btn quiet sm" id="zOut" type="button" aria-label="Verkleinern">−</button> <button class="btn quiet sm" id="zFit" type="button">Einpassen</button> <button class="btn quiet sm" id="zIn" type="button" aria-label="Vergrößern">+</button>';
+    z.style.display = 'contents'; // so the zoom buttons wrap with the others on narrow screens
     bar.appendChild(z);
     $('#zOut').addEventListener('click', function () { zoomBy(1 / 1.2); }); $('#zIn').addEventListener('click', function () { zoomBy(1.2); }); $('#zFit').addEventListener('click', function () { fitZoom(); draw(); });
   })();

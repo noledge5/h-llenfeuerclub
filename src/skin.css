@@ -225,3 +225,11 @@ main{padding-bottom:calc(150px + env(safe-area-inset-bottom,0px))!important}
 [data-theme="candle"] .chip[aria-pressed="true"],[data-theme="candle"] .tokbtn[aria-pressed="true"]{background:var(--forest);color:var(--on-forest)}
 [data-theme="candle"] .scene a,[data-theme="candle"] .card a,[data-theme="candle"] .kcard a{color:var(--gold-bright)}
 [data-theme="candle"] .scene .btn.ghost,[data-theme="candle"] .dock .btn.ghost,[data-theme="candle"] details.more summary{color:var(--gold-bright);border-color:var(--gold-dim)}
+/* candle: green text on dark ground needs the bright green (AA) */
+[data-theme="candle"] .dock-tabs button[aria-selected="true"]{color:var(--forest-bright);border-bottom-color:var(--forest-bright);background:rgba(255,235,190,.08)}
+[data-theme="candle"] .rulerout,[data-theme="candle"] a{color:var(--forest-bright)}
+/* narrow screens: nothing may push the page wider than the screen */
+main,.view,.card,.kcard,.vtt>*{min-width:0}
+@media(max-width:1099px){.vtt{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:899px){.calgrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.prepscene .row,.prepscene .fieldrow{flex-wrap:wrap}.tblwrap{overflow-x:auto}.tbl2 th,.tbl2 td{white-space:nowrap}.kcard table:not(.tbl2){display:block;max-width:100%;overflow-x:auto}}
+@media(max-width:480px){.sndbar{gap:6px;padding:4px 6px}.sndbar .btn{padding:4px 6px;font-size:.6rem;letter-spacing:.05em}}

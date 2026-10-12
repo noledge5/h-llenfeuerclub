@@ -106,12 +106,12 @@
     if (b.dataset.fx != null) { auResume(); return playFx(fxIds()[parseInt(b.dataset.fx, 10)], b); }
     if (b.dataset.libPlay) {
       auResume(); if (b.dataset.kind === 'fx') return playFx(b.dataset.libPlay);
-      if (probe) { probe.pause(); probe = null; if (b.dataset.on) { b.dataset.on = ''; b.textContent = 'Probehören'; return; } }
-      getUrl(b.dataset.libPlay).then(function (u) { if (!u) return; probe = new Audio(u); probe.volume = 0.7; probe.play(); b.dataset.on = '1'; b.textContent = 'Stopp'; });
+      var was = $('#libList [data-on="1"]'); if (probe) { probe.pause(); probe = null; } if (was) { was.dataset.on = ''; was.textContent = 'Probehören'; if (was === b) return; }
+      getUrl(b.dataset.libPlay).then(function (u) { if (!u) return; var pr = probe = new Audio(u); pr.volume = ST.mute ? 0 : Math.min(1, ST.vol / 100); pr.onended = function () { b.dataset.on = ''; b.textContent = 'Probehören'; }; pr.play(); b.dataset.on = '1'; b.textContent = 'Stopp'; });
     }
     if (b.dataset.libDel) {
       if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Sicher?'; setTimeout(function () { if (b.isConnected) { b.dataset.armed = '0'; b.textContent = 'Löschen'; } }, 3000); return; }
-      var id = b.dataset.libDel; removeMedia(id).then(function () { Object.keys(ST.scenes).forEach(function (k) { var o = ST.scenes[k]; if (o.music === id) o.music = null; if (o.comb === id) o.comb = null; if (o.atmo) o.atmo = o.atmo.filter(function (x) { return x !== id; }); if (o.fx) o.fx = o.fx.map(function (x) { return x === id ? '' : x; }); }); saveST(); renderSoundView(); renderFxBar(); renderSceneBars(); });
+      var id = b.dataset.libDel; removeMedia(id).then(function () { Object.keys(ST.scenes).forEach(function (k) { var o = ST.scenes[k]; if (o.music === id) o.music = null; if (o.comb === id) o.comb = null; if (o.atmo) o.atmo = o.atmo.map(function (x) { return x === id ? '' : x; }); if (o.fx) o.fx = o.fx.map(function (x) { return x === id ? '' : x; }); }); saveST(); delete fxBuf[id]; if (AU.music.id === id) playMusic(sceneCfg(cur).music && sceneCfg(cur).music !== id ? sceneCfg(cur).music : null, 1); setAtmo(sceneCfg(cur).atmo, 1); renderSoundView(); renderFxBar(); renderSceneBars(); });
     }
   });
   $('#v-sound').addEventListener('change', function (e) {
@@ -121,7 +121,7 @@
     var k = t.dataset.snd; if (!k) return; auResume();
     if (k === 'music') { setSceneCfg(cur, { music: t.value || null }); if (!C.active) playMusic(t.value || null, 3); }
     else if (k === 'comb') { setSceneCfg(cur, { comb: t.value || null }); if (C.active) playMusic(t.value || null, 3); }
-    else if (k === 'atmo') { var a = cf.atmo.slice(); while (a.length < 3) a.push(''); a[parseInt(t.dataset.i, 10)] = t.value; a = a.filter(Boolean); setSceneCfg(cur, { atmo: a }); setAtmo(a); }
+    else if (k === 'atmo') { var a = cf.atmo.slice(); while (a.length < 3) a.push(''); a[parseInt(t.dataset.i, 10)] = t.value; setSceneCfg(cur, { atmo: a }); setAtmo(a); }
     else if (k === 'fx') { var f = cf.fx.slice(); f[parseInt(t.dataset.i, 10)] = t.value; setSceneCfg(cur, { fx: f }); renderFxBar(); }
     renderSoundView(); renderSceneBars();
   });
@@ -131,8 +131,10 @@
     Promise.all(list.map(function (f) { return addMedia(kind, f); })).then(function () { toast(list.length + ' Datei(en) hinzugefügt'); renderSoundView(); }).catch(function (er) { toast('Speichern ging nicht: ' + er.message); });
   }
   $('#sndFile').addEventListener('change', function () { takeFiles(this.files, $('#sndKind').value); this.value = ''; });
-  $('#dropZone').addEventListener('click', function (e) { if (e.target.tagName !== 'INPUT') $('#sndFile').click(); });
+  // the zone is a <label>: a click already opens the dialog (a second click() opened it twice)
   $('#dropZone').addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#sndFile').click(); } });
+  // a file dropped beside the zone must not make the browser leave the page
+  ['dragover', 'drop'].forEach(function (n) { document.addEventListener(n, function (e) { if (e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') >= 0) e.preventDefault(); }); });
   ['dragover', 'dragenter'].forEach(function (n) { $('#dropZone').addEventListener(n, function (e) { e.preventDefault(); this.classList.add('over'); }); });
   ['dragleave', 'drop'].forEach(function (n) { $('#dropZone').addEventListener(n, function (e) { e.preventDefault(); this.classList.remove('over'); if (n === 'drop') takeFiles(e.dataTransfer.files, $('#sndKind').value); }); });
 
@@ -164,7 +166,7 @@
       '<div class="fieldrow"><div class="field" style="flex:1 1 260px">Karten dieser Szene (die erste startet)<div class="chips" style="margin-top:4px">' + mapKeys().map(function (k) { return '<button class="chip" type="button" data-sc-map="' + k + '" aria-pressed="' + (cf.maps.indexOf(k) >= 0) + '">' + esc(getMap(k).name || k) + '</button>'; }).join('') + '</div></div></div>' +
       '<div class="fieldrow"><img class="thumb" data-mood-thumb="' + i + '" alt="" ' + (cf.mood ? '' : 'hidden') + '><label class="btn sm quiet" style="cursor:pointer">' + (cf.mood ? 'Stimmungsbild ersetzen' : 'Stimmungsbild laden') + '<input type="file" accept="image/png,image/jpeg,image/webp" data-up-mood="' + i + '" hidden></label>' + (cf.mood ? '<button class="btn sm quiet" type="button" data-mood-del="' + i + '">Entfernen</button>' : '') +
       '<label class="field">Beamer startet mit<select data-sc-stage="' + i + '"><option value="">automatisch</option><option value="map"' + (cf.stage === 'map' ? ' selected' : '') + '>Karte</option><option value="mood"' + (cf.stage === 'mood' ? ' selected' : '') + '>Stimmungsbild</option><option value="title"' + (cf.stage === 'title' ? ' selected' : '') + '>Titel</option></select></label></div>' +
-      '<div class="fine">Ton: Musik ' + esc(soundName(cf.music)) + ' · Atmosphäre ' + esc(cf.atmo.map(soundName).join(', ') || '–') + '. Ändern im Reiter Sound.</div></div>';
+      '<div class="fine">Ton: Musik ' + esc(soundName(cf.music)) + ' · Atmosphäre ' + esc(cf.atmo.filter(Boolean).map(soundName).join(', ') || '–') + '. Ändern im Reiter Sound.</div></div>';
   }
   function renderPrep() {
     if ($('#v-vorbereitung').hidden) return;
@@ -229,27 +231,67 @@
     }
   });
 
-  /* ----- Export / Import ----- */
-  function blobToDataUrl(b) { return new Promise(function (res) { var r = new FileReader(); r.onload = function () { res(r.result); }; r.readAsDataURL(b); }); }
+  /* ----- Export / Import -----
+     One JSON file: settings, maps, scene setup and every picture and sound as a data URL. A JavaScript string cannot be longer
+     than about 512 million characters, so a project above MAX_JSON is refused with a clear message instead of crashing. */
+  var MAX_JSON = 480 * 1048576;
+  function blobToDataUrl(b) { return new Promise(function (res, rej) { var r = new FileReader(); r.onload = function () { res(r.result); }; r.onerror = function () { rej(r.error || new Error('Lesefehler')); }; r.readAsDataURL(b); }); }
+  function mb(n) { return (n / 1048576).toFixed(n > 10485760 ? 0 : 1); }
+  function info(t, toastToo) { $('#expInfo').textContent = t; if (toastToo) toast(t); }
   $('#expBtn').addEventListener('click', function () {
-    $('#expInfo').textContent = 'Wird gepackt …'; saveST(); if (!NOSAVE) save('maps', MAPS);
+    var btn = this; if (btn.disabled) return; btn.disabled = true;
+    function fail(t) { btn.disabled = false; info(t, true); }
+    info('Wird gepackt …'); saveST(); if (!NOSAVE) save('maps', MAPS);
     var ls = {}; try { for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k.indexOf(KEY) === 0) ls[k] = localStorage.getItem(k); } } catch (e) {}
-    dbAll().then(function (all) { return Promise.all(all.map(function (r) { return blobToDataUrl(r.blob).then(function (d) { return { id: r.id, kind: r.kind, name: r.name, type: r.type, size: r.size, w: r.w, h: r.h, data: d }; }); })); }).then(function (blobs) {
-      var out = JSON.stringify({ app: 'eulenbach-dm-helfer', v: 2, saved: new Date().toISOString(), ls: ls, blobs: blobs });
-      var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([out], { type: 'application/json' })); a.download = 'eulenbach-projekt-' + new Date().toISOString().slice(0, 10) + '.json'; document.body.appendChild(a); a.click(); a.remove();
-      $('#expInfo').textContent = 'Fertig: ' + (out.length / 1048576).toFixed(1) + ' MB, ' + blobs.length + ' Medien.';
-    });
+    dbAll().then(function (all) {
+      var total = all.reduce(function (n, r) { return n + (r.blob ? r.blob.size : 0); }, 0);
+      if (total * 4 / 3 > MAX_JSON) throw new Error('Das Projekt ist mit ' + mb(total) + ' MB zu groß für eine Datei (höchstens etwa 350 MB Bilder und Töne). Lösche große Töne oder Bilder und exportiere nochmal.');
+      var parts = ['{"app":"eulenbach-dm-helfer","v":2,"saved":' + JSON.stringify(new Date().toISOString()) + ',"ls":' + JSON.stringify(ls) + ',"blobs":['], n = 0;
+      function next(j) {
+        if (j >= all.length) { parts.push(']}'); return Promise.resolve(); }
+        var r = all[j]; info('Wird gepackt … ' + (j + 1) + ' von ' + all.length);
+        return blobToDataUrl(r.blob).then(function (d) {
+          var head = JSON.stringify({ id: r.id, kind: r.kind, name: r.name, type: r.type, size: r.size, w: r.w, h: r.h });
+          parts.push(new Blob([(j ? ',' : '') + head.slice(0, -1) + ',"data":"', d, '"}'])); // each entry is handed to the Blob at once, so memory is freed
+          n++; return next(j + 1);
+        });
+      }
+      return next(0).then(function () { return { blob: new Blob(parts, { type: 'application/json' }), n: n }; });
+    }).then(function (r) {
+      var a = document.createElement('a'); a.href = URL.createObjectURL(r.blob); a.download = 'eulenbach-projekt-' + new Date().toISOString().slice(0, 10) + '.json'; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 60000);
+      btn.disabled = false; info('Fertig: ' + mb(r.blob.size) + ' MB, ' + r.n + ' Medien.');
+    }).catch(function (er) { fail('Export ging nicht: ' + (er && er.message || er)); });
   });
   $('#impFile').addEventListener('change', function () {
-    var f = this.files[0]; if (!f) return; var r = new FileReader();
-    r.onload = function () {
-      var j; try { j = JSON.parse(r.result); } catch (e) { return toast('Das ist keine Projektdatei'); }
-      if (j.app !== 'eulenbach-dm-helfer') return toast('Das ist keine Projektdatei');
-      NOSAVE = true;
-      Object.keys(j.ls || {}).forEach(function (k) { try { localStorage.setItem(k, j.ls[k]); } catch (e) {} });
-      Promise.all((j.blobs || []).map(function (b) { return fetch(b.data).then(function (x) { return x.blob(); }).then(function (bl) { return dbPut({ id: b.id, kind: b.kind, name: b.name, type: b.type, size: b.size, w: b.w, h: b.h, blob: bl, t: Date.now() }); }); })).then(function () { toast('Projekt geladen. Neu starten …'); setTimeout(function () { location.reload(); }, 900); });
-    };
-    r.readAsText(f); this.value = '';
+    var f = this.files[0]; this.value = ''; if (!f) return;
+    if (f.size > MAX_JSON) return info('Die Datei ist mit ' + mb(f.size) + ' MB zu groß zum Einlesen (höchstens etwa 480 MB).', true);
+    info('Wird gelesen …');
+    f.text().then(function (txt) {
+      var j; try { j = JSON.parse(txt); } catch (e) { throw new Error('Das ist keine Projektdatei'); }
+      if (!j || j.app !== 'eulenbach-dm-helfer') throw new Error('Das ist keine Projektdatei');
+      return j;
+    }, function () { throw new Error('Die Datei ist zu groß für den Arbeitsspeicher'); }).then(function (j) {
+      var bl = j.blobs || [];
+      function put(i) { // pictures and sounds first: this is where memory or disk can run out
+        if (i >= bl.length) return Promise.resolve();
+        var b = bl[i]; info('Wird eingelesen … ' + (i + 1) + ' von ' + bl.length);
+        return fetch(b.data).then(function (x) { return x.blob(); }).then(function (blob) { b.data = null; return dbPut({ id: b.id, kind: b.kind, name: b.name, type: b.type, size: b.size, w: b.w, h: b.h, blob: blob, t: Date.now() }); }).then(function () { return put(i + 1); });
+      }
+      return put(0).then(function () {
+        NOSAVE = true; // from here the page must not write its old state over the restored one
+        var old = {}, i, k;
+        try {
+          for (i = localStorage.length - 1; i >= 0; i--) { k = localStorage.key(i); if (k && k.indexOf(KEY) === 0) { old[k] = localStorage.getItem(k); localStorage.removeItem(k); } }
+          Object.keys(j.ls || {}).forEach(function (key) { if (key.indexOf(KEY) === 0) localStorage.setItem(key, j.ls[key]); });
+        } catch (e) { // roll back, nothing is lost
+          Object.keys(j.ls || {}).forEach(function (key) { try { localStorage.removeItem(key); } catch (e2) {} });
+          Object.keys(old).forEach(function (key) { try { localStorage.setItem(key, old[key]); } catch (e2) {} });
+          NOSAVE = false; throw new Error('Der Browser-Speicher ist voll');
+        }
+        info('Projekt geladen. Neu starten …', true); setTimeout(function () { location.reload(); }, 900);
+      });
+    }).catch(function (er) { NOSAVE = false; info('Import ging nicht: ' + (er && er.message || er), true); });
   });
 
   /* ----- Thema, Tasten, Start ----- */

@@ -14,3 +14,9 @@
     return oc.call(this, d, ...r);
   };
 })();
+// record every media element that was asked to play, to see which ones are still running
+(() => {
+  window.__media = [];
+  const op = HTMLMediaElement.prototype.play;
+  HTMLMediaElement.prototype.play = function () { if (!window.__media.includes(this)) window.__media.push(this); return op.apply(this, arguments); };
+})();

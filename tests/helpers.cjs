@@ -15,7 +15,7 @@ const AUDIO_TAP = fs.readFileSync(path.join(__dirname, 'audiotap.js'), 'utf8');
 // opts: { viewport, tap (audio level meter), hash }
 async function launch(opts = {}) {
   const browser = await pw.chromium.launch({ channel: 'chromium', args: ['--autoplay-policy=document-user-activation-required'] });
-  const ctx = await browser.newContext({ viewport: opts.viewport || { width: 1400, height: 1000 }, acceptDownloads: true, hasTouch: !!opts.touch });
+  const ctx = await browser.newContext({ viewport: opts.viewport || { width: 1400, height: 1000 }, acceptDownloads: true, hasTouch: !!opts.touch, reducedMotion: opts.reducedMotion || 'no-preference' });
   if (opts.tap) await ctx.addInitScript({ content: AUDIO_TAP });
   const requests = [];
   ctx.on('request', r => { const u = r.url(); if (!/^(data|blob|about):/.test(u) && !u.startsWith('file://')) requests.push(u); });
