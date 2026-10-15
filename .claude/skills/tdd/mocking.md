@@ -1,59 +1,62 @@
-# When to Mock
+# Wann Attrappen (Mocks) nutzen
 
-Mock at **system boundaries** only:
+Eine Attrappe (Mock) ersetzt im Test einen echten Teil, etwa einen Netzdienst. Ersetze nur an **Systemgrenzen**:
 
-- External APIs (payment, email, etc.)
-- Databases (sometimes - prefer test DB)
-- Time/randomness
-- File system (sometimes)
+- Externe Schnittstellen (Zahlung, E-Mail usw.)
+- Datenbanken (manchmal; besser eine Test-Datenbank)
+- Zeit und Zufall
+- Dateisystem (manchmal; besser ein temporärer Ordner)
 
-Don't mock:
+Nicht ersetzen:
 
-- Your own classes/modules
-- Internal collaborators
-- Anything you control
+- Eigene Klassen und Module
+- Interne Mitspieler
+- Alles, was du selbst kontrollierst
 
-## Designing for Mockability
+Mit `node:test` geht das ohne zusätzliche Pakete (`t.mock.method`, `t.mock.timers`).
 
-At system boundaries, design interfaces that are easy to mock:
+## Für Attrappen entwerfen
 
-**1. Use dependency injection**
+An Systemgrenzen sollen Schnittstellen leicht zu ersetzen sein:
 
-Pass external dependencies in rather than creating them internally:
+**1. Abhängigkeiten hineingeben**
 
-```typescript
-// Easy to mock
-function processPayment(order, paymentClient) {
-  return paymentClient.charge(order.total);
+Externe Teile werden übergeben, nicht innen erzeugt:
+
+```js
+// Leicht zu ersetzen
+function zahleBestellung(bestellung, zahlungsclient) {
+  return zahlungsclient.belaste(bestellung.summe);
 }
 
-// Hard to mock
-function processPayment(order) {
+// Schwer zu ersetzen
+function zahleBestellung(bestellung) {
   const client = new StripeClient(process.env.STRIPE_KEY);
-  return client.charge(order.total);
+  return client.belaste(bestellung.summe);
 }
 ```
 
-**2. Prefer SDK-style interfaces over generic fetchers**
+**2. Lieber eine Funktion je Vorgang als einen Allzweck-Abrufer**
 
-Create specific functions for each external operation instead of one generic function with conditional logic:
+Lege für jeden externen Vorgang eine eigene Funktion an, statt einer einzigen mit Fallunterscheidung:
 
-```typescript
-// GOOD: Each function is independently mockable
+```js
+// GUT: jede Funktion ist einzeln ersetzbar
 const api = {
-  getUser: (id) => fetch(`/users/${id}`),
-  getOrders: (userId) => fetch(`/users/${userId}/orders`),
-  createOrder: (data) => fetch('/orders', { method: 'POST', body: data }),
+  holeNutzer: (id) => fetch(`/nutzer/${id}`),
+  holeBestellungen: (nutzerId) => fetch(`/nutzer/${nutzerId}/bestellungen`),
+  erzeugeBestellung: (daten) => fetch('/bestellungen', { method: 'POST', body: daten }),
 };
 
-// BAD: Mocking requires conditional logic inside the mock
+// SCHLECHT: die Attrappe braucht innen Fallunterscheidungen
 const api = {
-  fetch: (endpoint, options) => fetch(endpoint, options),
+  fetch: (endpunkt, optionen) => fetch(endpunkt, optionen),
 };
 ```
 
-The SDK approach means:
-- Each mock returns one specific shape
-- No conditional logic in test setup
-- Easier to see which endpoints a test exercises
-- Type safety per endpoint
+Das bringt:
+
+- Jede Attrappe liefert eine bestimmte Form
+- Keine Fallunterscheidung im Testaufbau
+- Man sieht leichter, welche Endpunkte ein Test nutzt
+- Typsicherheit je Endpunkt

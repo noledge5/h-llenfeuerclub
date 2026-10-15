@@ -1,62 +1,54 @@
 ---
 name: ponytail-review
-description: >
-  Code review focused exclusively on over-engineering. Finds what to delete:
-  reinvented standard library, unneeded dependencies, speculative abstractions,
-  dead flexibility. One line per finding: location, what to cut, what replaces
-  it. Use when the user says "review for over-engineering", "what can we
-  delete", "is this over-engineered", "simplify review", or invokes
-  /ponytail-review. Complements correctness-focused review, this one only
-  hunts complexity.
+description: "Prüft eine Änderung (Diff, also die Unterschiede zum vorigen Stand) ausschließlich auf Überbau und sagt, was gelöscht werden kann: nachgebaute Standardbibliothek, unnötige Abhängigkeiten, vorsorgliche Abstraktionen, ungenutzte Flexibilität. Eine Zeile je Befund mit Ort, Schnitt, Ersatz und Grund. Nutze den Skill, wenn der Nutzer „auf Überbau prüfen“, „was können wir löschen“, „ist das überbaut“ sagt oder /ponytail-review aufruft. Ergänzt eine Prüfung auf Korrektheit, ersetzt sie nicht. Nicht für Fehler, Sicherheit oder Geschwindigkeit; nicht für das ganze Projekt (dafür ponytail-audit)."
 ---
 
-Review diffs for unnecessary complexity. One line per finding: location, what
-to cut, what replaces it. The diff's best outcome is getting shorter.
+# Ponytail-Review
+
+Prüfe eine Änderung auf unnötige Komplexität. Eine Zeile je Befund: Ort, was weg kann, was es ersetzt, warum. Das beste Ergebnis: Die Änderung wird kürzer.
 
 ## Format
 
-`<N>. L<line>: <tag> <what>. <replacement>.`, or `<N>. <file>:L<line>: ...` for
-multi-file diffs. Number findings `1.`, `2.`, ... across the whole report, so the
-user can say "fix 2 and 5".
+`<N>. L<Zeile>: <Tag> <was>. <Ersatz>. Grund: <warum>.` Bei mehreren Dateien `<Datei>:L<Zeile>: …`. Befunde über den ganzen Bericht fortlaufend nummerieren (`1.`, `2.`, …), damit der Nutzer „2 und 5 beheben“ sagen kann.
 
 Tags:
 
-- `delete:` dead code, unused flexibility, speculative feature. Replacement: nothing.
-- `stdlib:` hand-rolled thing the standard library ships. Name the function.
-- `native:` dependency or code doing what the platform already does. Name the feature.
-- `reuse:` equivalent helper, util, or pattern already in this repo. Name the path.
-- `yagni:` abstraction with one implementation, config nobody sets, layer with one caller.
-- `shrink:` same logic, fewer lines. Show the shorter form.
+- `delete:` toter Code, ungenutzte Flexibilität, vorsorgliche Funktion. Ersatz: nichts.
+- `stdlib:` selbst gebaut, was die Standardbibliothek mitbringt. Funktion nennen.
+- `native:` Abhängigkeit oder Code, der tut, was die Plattform schon kann. Funktion nennen.
+- `reuse:` gleichwertige Hilfsfunktion oder gleiches Muster liegt schon im Projekt. Pfad nennen.
+- `yagni:` Abstraktion mit einer Umsetzung, Einstellung, die niemand setzt, Schicht mit einem Aufrufer. (YAGNI: du wirst es nicht brauchen.)
+- `shrink:` gleiche Logik, weniger Zeilen. Kürzere Form zeigen.
+- `werkzeug:` Ablauf, der sich wiederholt und sich in Regeln fassen lässt. Ersatz: Werkzeug statt Code oder Prompt (Skill `werkzeugbau`).
 
+## Begründung und Umgang mit Befunden
 
-## Examples
+Jeder Befund nennt seinen Grund, also die echte Ursache des Überbaus (zum Beispiel „ein Aufrufer“, „nie gesetzt“, „existiert unter src/lib“). Ein Befund ohne belegbaren Grund wird gestrichen. Der Bericht ändert selbst nichts. Danach gilt: Was eine echte Ursache hat, wird behoben (nach Freigabe des Nutzers, bei mehreren als Paket im Plan, Skill `plan`). Was nicht behoben wird, bekommt den Grund dazu, warum es bleibt.
 
-❌ "This EmailValidator class might be more complex than necessary, have you
-considered whether all these validation rules are needed at this stage?"
+## Beispiele
 
-✅ `1. L12-38: stdlib: 27-line validator class. "@" in email, 1 line, real validation is the confirmation mail.`
+Schlecht: „Diese E-Mail-Prüfklasse ist vielleicht komplexer als nötig, wurde schon überlegt, ob alle Regeln jetzt gebraucht werden?“
 
-✅ `2. L4: native: moment.js imported for one format call. Intl.DateTimeFormat, 0 deps.`
+Gut:
 
-✅ `3. L18-29: reuse: slugify helper duplicates src/lib/slug.ts slugify. Delete it, import the existing one.`
+`1. L12-38: stdlib: 27-zeilige Prüfklasse. „@“ in der Adresse, 1 Zeile; echte Prüfung ist die Bestätigungsmail. Grund: Regeln werden nirgends sonst genutzt.`
 
-✅ `4. repo.py:L88: yagni: AbstractRepository with one implementation. Inline it until a second one exists.`
+`2. L4: native: moment.js für einen einzigen Formataufruf. Intl.DateTimeFormat, 0 Abhängigkeiten. Grund: nur ein Aufruf.`
 
-✅ `5. L52-71: delete: retry wrapper around an idempotent local call. Nothing replaces it.`
+`3. L18-29: reuse: Hilfsfunktion slugify doppelt src/lib/slug.ts. Löschen, vorhandene importieren. Grund: gleiche Logik, gleiche Tests.`
 
-✅ `6. L30-44: shrink: manual loop builds dict. dict(zip(keys, values)), 1 line.`
+`4. repo.py:L88: yagni: AbstractRepository mit einer Umsetzung. Einsetzen, bis eine zweite existiert. Grund: ein einziger Aufrufer.`
 
-## Scoring
+`5. L52-71: delete: Wiederholungsschleife um einen wiederholbaren lokalen Aufruf. Nichts. Grund: der Aufruf kann nicht vorübergehend scheitern.`
 
-End with the only metric that matters: `net: -<N> lines possible.`
+`6. L30-44: shrink: Schleife baut Wörterbuch. dict(zip(keys, values)), 1 Zeile. Grund: gleiche Aussage.`
 
-If there is nothing to cut, say `Lean already. Ship.` and stop.
+## Wertung
 
-## Boundaries
+Zum Schluss die einzige Zahl, die zählt: `netto: -<N> Zeilen möglich.` Gibt es nichts zu schneiden: `Schon schlank. Weiter.` und Schluss.
 
-Scope: over-engineering and complexity only. Correctness bugs, security holes,
-and performance are explicitly out of scope. Route them to a normal review
-pass, not this one. A single smoke test or `assert`-based
-self-check is the ponytail minimum, not bloat, never flag it for deletion.
-Does not apply the fixes, only lists them.
-"stop ponytail-review" or "normal mode": revert to verbose review style.
+## Grenzen
+
+Nur Überbau und Komplexität. Fehler, Sicherheitslücken und Geschwindigkeit gehören ausdrücklich nicht hierher, sondern in eine normale Prüfung. Ein einzelner Testfall in der UTS ist das Minimum von ponytail, kein Ballast: nie zum Löschen vorschlagen. „stop ponytail-review“ oder „normaler Modus“ schaltet auf die ausführliche Prüfung zurück.
+
+Grundlage: DietrichGebert/ponytail (MIT), übersetzt und an hierarchie angepasst.

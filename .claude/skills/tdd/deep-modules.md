@@ -1,33 +1,33 @@
-# Deep Modules
+# Tiefe Module
 
-From "A Philosophy of Software Design":
+Nach „A Philosophy of Software Design“:
 
-**Deep module** = small interface + lots of implementation
+**Tiefes Modul** = kleine Schnittstelle + viel Umsetzung dahinter
 
 ```
 ┌─────────────────────┐
-│   Small Interface   │  ← Few methods, simple params
+│  Kleine Schnittstelle│  ← wenige Funktionen, einfache Parameter
 ├─────────────────────┤
 │                     │
 │                     │
-│  Deep Implementation│  ← Complex logic hidden
+│  Tiefe Umsetzung    │  ← knifflige Logik versteckt
 │                     │
 │                     │
 └─────────────────────┘
 ```
 
-**Shallow module** = large interface + little implementation (avoid)
+**Flaches Modul** = große Schnittstelle + wenig Umsetzung (vermeiden)
 
 ```
 ┌─────────────────────────────────┐
-│       Large Interface           │  ← Many methods, complex params
+│       Große Schnittstelle       │  ← viele Funktionen, verwickelte Parameter
 ├─────────────────────────────────┤
-│  Thin Implementation            │  ← Just passes through
+│  Dünne Umsetzung                │  ← reicht nur durch
 └─────────────────────────────────┘
 ```
 
-When designing interfaces, ask:
+Beim Entwerfen von Schnittstellen frage:
 
-- Can I reduce the number of methods?
-- Can I simplify the parameters?
-- Can I hide more complexity inside?
+- Kann ich die Zahl der Funktionen verringern?
+- Kann ich die Parameter vereinfachen?
+- Kann ich mehr Komplexität im Inneren verstecken?

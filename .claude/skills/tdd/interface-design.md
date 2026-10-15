@@ -1,31 +1,31 @@
-# Interface Design for Testability
+# Schnittstellen für Testbarkeit
 
-Good interfaces make testing natural:
+Gute Schnittstellen machen Testen selbstverständlich:
 
-1. **Accept dependencies, don't create them**
+1. **Abhängigkeiten annehmen, nicht erzeugen**
 
-   ```typescript
-   // Testable
-   function processOrder(order, paymentGateway) {}
+   ```js
+   // Testbar
+   function bearbeiteBestellung(bestellung, zahlungsgateway) {}
 
-   // Hard to test
-   function processOrder(order) {
+   // Schwer testbar
+   function bearbeiteBestellung(bestellung) {
      const gateway = new StripeGateway();
    }
    ```
 
-2. **Return results, don't produce side effects**
+2. **Ergebnisse zurückgeben, keine Nebenwirkungen erzeugen**
 
-   ```typescript
-   // Testable
-   function calculateDiscount(cart): Discount {}
+   ```js
+   // Testbar
+   function berechneRabatt(korb) { return rabatt; }
 
-   // Hard to test
-   function applyDiscount(cart): void {
-     cart.total -= discount;
+   // Schwer testbar
+   function wendeRabattAn(korb) {
+     korb.summe -= rabatt;
    }
    ```
 
-3. **Small surface area**
-   - Fewer methods = fewer tests needed
-   - Fewer params = simpler test setup
+3. **Kleine Oberfläche**
+   - Weniger Funktionen = weniger nötige Tests
+   - Weniger Parameter = einfacherer Testaufbau

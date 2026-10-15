@@ -1,117 +1,128 @@
 ---
 name: diagnose
-description: Disciplined diagnosis loop for hard bugs and performance regressions. Reproduce → minimise → hypothesise → instrument → fix → regression-test. Use when user says "diagnose this" / "debug this", reports a bug, says something is broken/throwing/failing, or describes a performance regression.
+description: "Disziplinierte Fehlersuche bei schwierigen Fehlern und Leistungseinbrüchen: Schleife bauen, reproduzieren, Hypothesen aufstellen, messen, beheben, Regressionstest in die UTS. Nutze den Skill, wenn der Nutzer „diagnose“, „debug das“ oder „finde den Fehler“ sagt, einen Fehler meldet, etwas kaputt ist, Fehler wirft oder fehlschlägt, oder ein Leistungsproblem beschreibt. Nicht für einfache, sofort sichtbare Fehler ohne Rätsel und nicht für Neubau."
 ---
 
 # Diagnose
 
-A discipline for hard bugs. Skip phases only when explicitly justified.
+Eine Disziplin für schwierige Fehler. Phasen werden nur mit ausdrücklicher Begründung übersprungen.
 
-When exploring the codebase, use the project's domain glossary to get a clear mental model of the relevant modules, and check ADRs in the area you're touching.
+Beim Erkunden des Projekts helfen `STAND.md` (Entscheidungen, Befunde), vorhandene Pläne und das Register der Werkzeuge. Ein Befund dort kann den Fehler schon erklären.
 
-## Phase 1 — Build a feedback loop
+## Phase 1: Eine Rückmeldeschleife bauen
 
-**This is the skill.** Everything else is mechanical. If you have a fast, deterministic, agent-runnable pass/fail signal for the bug, you will find the cause — bisection, hypothesis-testing, and instrumentation all just consume that signal. If you don't have one, no amount of staring at code will save you.
+**Das ist der Kern.** Alles andere ist Handwerk. Mit einem schnellen, deterministischen (immer gleich ausgehenden), von Claude selbst ausführbaren Bestanden/Durchgefallen-Signal für den Fehler findest du die Ursache; Eingrenzen, Hypothesen prüfen und Messen verbrauchen nur dieses Signal. Ohne es hilft kein Anstarren des Codes.
 
-Spend disproportionate effort here. **Be aggressive. Be creative. Refuse to give up.**
+Betreibe hier unverhältnismäßig viel Aufwand. **Sei hartnäckig, kreativ und gib nicht auf.**
 
-### Ways to construct one — try them in roughly this order
+### Wege zu einer Schleife, ungefähr in dieser Reihenfolge
 
-1. **Failing test** at whatever seam reaches the bug — unit, integration, e2e.
-2. **Curl / HTTP script** against a running dev server.
-3. **CLI invocation** with a fixture input, diffing stdout against a known-good snapshot.
-4. **Headless browser script** (Playwright / Puppeteer) — drives the UI, asserts on DOM/console/network.
-5. **Replay a captured trace.** Save a real network request / payload / event log to disk; replay it through the code path in isolation.
-6. **Throwaway harness.** Spin up a minimal subset of the system (one service, mocked deps) that exercises the bug code path with a single function call.
-7. **Property / fuzz loop.** If the bug is "sometimes wrong output", run 1000 random inputs and look for the failure mode.
-8. **Bisection harness.** If the bug appeared between two known states (commit, dataset, version), automate "boot at state X, check, repeat" so you can `git bisect run` it.
-9. **Differential loop.** Run the same input through old-version vs new-version (or two configs) and diff outputs.
-10. **HITL bash script.** Last resort. If a human must click, drive _them_ with `scripts/hitl-loop.template.sh` so the loop is still structured. Captured output feeds back to you.
+1. **Fehlschlagender Test in der UTS** an der Stelle, die den Fehler erreicht (Einzelfunktion, Zusammenspiel mehrerer Teile, ganzer Ablauf). Das ist der Standard, und jede andere Schleife soll am Ende hier landen.
+2. **Aufruf gegen einen laufenden Entwicklungsserver** (HTTP-Anfrage per Skript).
+3. **Befehlsaufruf mit einer Beispieleingabe**, Ausgabe gegen einen bekannten guten Stand vergleichen.
+4. **Browser ohne Oberfläche** (Playwright oder Puppeteer, falls im Projekt vorhanden): steuert die Seite und prüft Seiteninhalt, Konsole, Netzwerk.
+5. **Aufgezeichneten Vorgang wiedergeben.** Eine echte Anfrage, Nutzlast oder ein Ereignisprotokoll speichern und isoliert durch den Codepfad schicken.
+6. **Kleiner Nachbau.** Ein Minimalausschnitt des Systems (ein Dienst, Abhängigkeiten ersetzt), der den fehlerhaften Pfad mit einem Funktionsaufruf auslöst.
+7. **Zufalls-Schleife.** Bei „manchmal falsche Ausgabe“: 1000 zufällige Eingaben laufen lassen und die Fehlerform suchen.
+8. **Eingrenzen entlang der Zeit.** Trat der Fehler zwischen zwei bekannten Ständen auf (Commit, Datenstand, Version), automatisiere „Stand X herstellen, prüfen, wiederholen“. Mit Git geht das über `git bisect run` und dem UTS-Aufruf der betroffenen Testdatei (`--zu <datei>`).
+9. **Vergleichsschleife.** Dieselbe Eingabe durch alte und neue Version (oder zwei Einstellungen) schicken und die Ausgaben vergleichen.
+10. **Menschliche Schleife.** Letzter Ausweg, siehe unten.
 
-Build the right feedback loop, and the bug is 90% fixed.
+Hilfsschleifen zum Eingrenzen sind erlaubt, gelten aber nicht als Prüfung. Sobald der Fehler greifbar ist, wird die Reproduktion als Test in die UTS übernommen (Phase 5), soweit sie sich automatisieren lässt. Was nicht automatisierbar ist (Optik, Gerät), wird als „nicht geprüft“ benannt.
 
-### Iterate on the loop itself
+Mit der richtigen Rückmeldeschleife ist der Fehler zu 90 % behoben.
 
-Treat the loop as a product. Once you have _a_ loop, ask:
+### Die Schleife selbst verbessern
 
-- Can I make it faster? (Cache setup, skip unrelated init, narrow the test scope.)
-- Can I make the signal sharper? (Assert on the specific symptom, not "didn't crash".)
-- Can I make it more deterministic? (Pin time, seed RNG, isolate filesystem, freeze network.)
+Behandle die Schleife wie ein Produkt. Sobald es *eine* gibt, frage:
 
-A 30-second flaky loop is barely better than no loop. A 2-second deterministic loop is a debugging superpower.
+- Geht es schneller? (Aufbau zwischenspeichern, Unwichtiges überspringen, Testumfang verkleinern.)
+- Wird das Signal schärfer? (Auf das genaue Symptom prüfen, nicht auf „ist nicht abgestürzt“.)
+- Wird sie deterministischer? (Zeit festnageln, Zufall mit festem Startwert, Dateisystem isolieren, Netzwerk einfrieren.)
 
-### Non-deterministic bugs
+Eine flackernde 30-Sekunden-Schleife ist kaum besser als keine. Eine deterministische 2-Sekunden-Schleife ist eine Superkraft.
 
-The goal is not a clean repro but a **higher reproduction rate**. Loop the trigger 100×, parallelise, add stress, narrow timing windows, inject sleeps. A 50%-flake bug is debuggable; 1% is not — keep raising the rate until it's debuggable.
+### Nicht deterministische Fehler
 
-### When you genuinely cannot build a loop
+Ziel ist keine saubere Reproduktion, sondern eine **höhere Trefferquote**. Auslöser 100-mal wiederholen, parallel laufen lassen, Last erzeugen, Zeitfenster verengen, Pausen einfügen. Ein Fehler, der in 50 % der Läufe auftritt, ist zu beheben, einer bei 1 % nicht: erhöhe die Quote, bis es geht.
 
-Stop and say so explicitly. List what you tried. Ask the user for: (a) access to whatever environment reproduces it, (b) a captured artifact (HAR file, log dump, core dump, screen recording with timestamps), or (c) permission to add temporary production instrumentation. Do **not** proceed to hypothesise without a loop.
+### Menschliche Schleife
 
-Do not proceed to Phase 2 until you have a loop you believe in.
+Muss ein Mensch klicken oder etwas ansehen, steuerst du *ihn* strukturiert (kein Skript nötig, plattformneutral): Schreibe dem Nutzer nummerierte Schritte zum Nachstellen, jeweils mit **einer** klaren Frage am Ende („Hat der Knopf einen Fehler gezeigt? ja/nein“, „Wie lautet die Fehlermeldung genau?“). Der Nutzer meldet die Antworten zurück, du wertest sie aus und stellst die nächste Runde zusammen. Halte die Schritte kurz, setze Ausgangszustand und erwartetes Ergebnis fest und ändere pro Runde nur eine Sache.
 
-## Phase 2 — Reproduce
+### Wenn gar keine Schleife möglich ist
 
-Run the loop. Watch the bug appear.
+Sage das ausdrücklich und liste auf, was du versucht hast. Bitte den Nutzer um: (a) Zugang zu der Umgebung, die den Fehler zeigt, (b) einen festgehaltenen Beleg (Protokoll, Speicherabzug, Bildschirmaufnahme mit Zeitangaben) oder (c) die Erlaubnis für vorübergehende Messpunkte im Echtbetrieb. Stelle **keine** Hypothesen auf ohne Schleife.
 
-Confirm:
+Gehe nicht zu Phase 2, bevor du eine Schleife hast, der du traust.
 
-- [ ] The loop produces the failure mode the **user** described — not a different failure that happens to be nearby. Wrong bug = wrong fix.
-- [ ] The failure is reproducible across multiple runs (or, for non-deterministic bugs, reproducible at a high enough rate to debug against).
-- [ ] You have captured the exact symptom (error message, wrong output, slow timing) so later phases can verify the fix actually addresses it.
+## Phase 2: Reproduzieren
 
-Do not proceed until you reproduce the bug.
+Lass die Schleife laufen und sieh den Fehler auftreten.
 
-## Phase 3 — Hypothesise
+Bestätige:
 
-Generate **3–5 ranked hypotheses** before testing any of them. Single-hypothesis generation anchors on the first plausible idea.
+- [ ] Die Schleife zeigt die Fehlerform, die der **Nutzer** beschrieben hat, nicht einen anderen Fehler in der Nähe. Falscher Fehler = falsche Korrektur.
+- [ ] Der Fehler tritt über mehrere Läufe auf (bei nicht deterministischen Fehlern mit einer Quote, die zum Arbeiten reicht).
+- [ ] Das genaue Symptom ist festgehalten (Fehlermeldung, falsche Ausgabe, Zeitmessung), damit spätere Phasen prüfen können, ob die Korrektur es wirklich trifft.
 
-Each hypothesis must be **falsifiable**: state the prediction it makes.
+Nicht weitergehen, bevor der Fehler reproduziert ist.
 
-> Format: "If <X> is the cause, then <changing Y> will make the bug disappear / <changing Z> will make it worse."
+## Phase 3: Hypothesen aufstellen
 
-If you cannot state the prediction, the hypothesis is a vibe — discard or sharpen it.
+Stelle **3 bis 5 gereihte Hypothesen** auf, bevor du eine prüfst. Mit nur einer verankerst du dich beim ersten plausiblen Einfall.
 
-**Show the ranked list to the user before testing.** They often have domain knowledge that re-ranks instantly ("we just deployed a change to #3"), or know hypotheses they've already ruled out. Cheap checkpoint, big time saver. Don't block on it — proceed with your ranking if the user is AFK.
+Jede Hypothese muss **widerlegbar** sein und ihre Vorhersage nennen.
 
-## Phase 4 — Instrument
+> Form: „Ist <X> die Ursache, dann lässt <Änderung Y> den Fehler verschwinden / macht <Änderung Z> ihn schlimmer.“
 
-Each probe must map to a specific prediction from Phase 3. **Change one variable at a time.**
+Kannst du die Vorhersage nicht nennen, ist die Hypothese nur ein Gefühl: verwerfen oder schärfen.
 
-Tool preference:
+**Zeige dem Nutzer die gereihte Liste, bevor du prüfst.** Er hat oft Fachwissen, das sofort umordnet („an Nr. 3 wurde gerade etwas geändert“), oder weiß, was schon ausgeschlossen ist. Ein billiger Zwischenhalt, der viel Zeit spart. Blockiere nicht: Ist der Nutzer nicht erreichbar, geht es mit deiner Reihung weiter.
 
-1. **Debugger / REPL inspection** if the env supports it. One breakpoint beats ten logs.
-2. **Targeted logs** at the boundaries that distinguish hypotheses.
-3. Never "log everything and grep".
+Bleibt der Fehler nach einem systematischen Sonnet-Versuch mit Bericht unklar oder müssen mehrere Hypothesen gegeneinander geprüft werden, ist das ein benannter Opus-Grund. Ob und an wen delegiert wird, entscheidet die Leitung nach den Skills `projektleitung` und `intelligent-routing`.
 
-**Tag every debug log** with a unique prefix, e.g. `[DEBUG-a4f2]`. Cleanup at the end becomes a single grep. Untagged logs survive; tagged logs die.
+## Phase 4: Messen
 
-**Perf branch.** For performance regressions, logs are usually wrong. Instead: establish a baseline measurement (timing harness, `performance.now()`, profiler, query plan), then bisect. Measure first, fix second.
+Jede Messung gehört zu einer bestimmten Vorhersage aus Phase 3. **Ändere jeweils nur eine Größe.**
 
-## Phase 5 — Fix + regression test
+Rangfolge der Mittel:
 
-Write the regression test **before the fix** — but only if there is a **correct seam** for it.
+1. **Debugger oder interaktive Konsole**, falls die Umgebung sie hat. Ein Haltepunkt schlägt zehn Logzeilen.
+2. **Gezielte Logzeilen** an den Grenzen, die Hypothesen unterscheiden.
+3. Nie „alles loggen und durchsuchen“.
 
-A correct seam is one where the test exercises the **real bug pattern** as it occurs at the call site. If the only available seam is too shallow (single-caller test when the bug needs multiple callers, unit test that can't replicate the chain that triggered the bug), a regression test there gives false confidence.
+**Kennzeichne jede Debug-Logzeile** mit einem eindeutigen Präfix, zum Beispiel `[DEBUG-a4f2]`. Das Aufräumen am Ende ist dann eine einzige Suche. Unmarkierte Logzeilen bleiben, markierte sterben.
 
-**If no correct seam exists, that itself is the finding.** Note it. The codebase architecture is preventing the bug from being locked down. Flag this for the next phase.
+**Leistungszweig.** Bei Leistungseinbrüchen sind Logzeilen meist falsch. Stattdessen: erst eine Basismessung (Zeitmessung, `performance.now()`, Profiler, Abfrageplan), dann eingrenzen. Erst messen, dann beheben.
 
-If a correct seam exists:
+## Phase 5: Beheben und Regressionstest
 
-1. Turn the minimised repro into a failing test at that seam.
-2. Watch it fail.
-3. Apply the fix.
-4. Watch it pass.
-5. Re-run the Phase 1 feedback loop against the original (un-minimised) scenario.
+Ein Regressionstest (er hält fest, dass der Fehler nicht wiederkommt) wird **vor der Korrektur** in der UTS geschrieben, aber nur, wenn es eine **passende Nahtstelle** dafür gibt.
 
-## Phase 6 — Cleanup + post-mortem
+Eine passende Nahtstelle ist eine Stelle, an der der Test das **echte Fehlermuster** so auslöst, wie es an der Aufrufstelle auftritt. Ist die einzige verfügbare Stelle zu flach (Test mit einem Aufrufer, obwohl der Fehler mehrere braucht; Einzeltest, der die auslösende Kette nicht nachbildet), gibt ein Test dort falsche Sicherheit.
 
-Required before declaring done:
+**Gibt es keine passende Nahtstelle, ist das selbst der Befund.** Notiere ihn: Der Aufbau des Codes verhindert, den Fehler festzunageln. Halte das für den nächsten Schritt fest.
 
-- [ ] Original repro no longer reproduces (re-run the Phase 1 loop)
-- [ ] Regression test passes (or absence of seam is documented)
-- [ ] All `[DEBUG-...]` instrumentation removed (`grep` the prefix)
-- [ ] Throwaway prototypes deleted (or moved to a clearly-marked debug location)
-- [ ] The hypothesis that turned out correct is stated in the commit / PR message — so the next debugger learns
+Gibt es eine passende Nahtstelle:
 
-**Then ask: what would have prevented this bug?** If the answer involves architectural change (no good test seam, tangled callers, hidden coupling) hand off to the `/improve-codebase-architecture` skill with the specifics. Make the recommendation **after** the fix is in, not before — you have more information now than when you started.
+1. Aus der verkleinerten Reproduktion einen fehlschlagenden Test in der UTS machen (Testdatei im Projekt, nicht als Wegwerfskript).
+2. Sehen, dass er fehlschlägt (`node .hierarchie/werkzeuge/uts.mjs --zu <datei>`, im Repo hierarchie `node werkzeuge/uts.mjs --zu <datei>`).
+3. Die Korrektur anwenden.
+4. Sehen, dass er besteht.
+5. Die Schleife aus Phase 1 gegen das ursprüngliche, nicht verkleinerte Szenario noch einmal laufen lassen.
+
+## Phase 6: Aufräumen und Rückblick
+
+Vor dem Abschluss erforderlich:
+
+- [ ] Die ursprüngliche Reproduktion tritt nicht mehr auf (Schleife aus Phase 1 erneut).
+- [ ] Der Regressionstest besteht (oder das Fehlen einer Nahtstelle ist festgehalten).
+- [ ] Alle `[DEBUG-...]`-Messpunkte sind entfernt (nach dem Präfix suchen).
+- [ ] Wegwerf-Prototypen sind gelöscht (oder in einem klar markierten Debug-Ordner).
+- [ ] UTS-Vollauf grün: `node .hierarchie/werkzeuge/uts.mjs --kurz` (im Repo hierarchie `node werkzeuge/uts.mjs --kurz`). „Geprüft“ gilt erst mit Testdatei und dieser Zeile.
+- [ ] Die Hypothese, die sich als richtig erwies, steht in der Commit-Nachricht oder PR-Beschreibung, damit der nächste Suchende lernt.
+
+**Dann frage: Was hätte diesen Fehler verhindert?** Verlangt die Antwort einen Umbau (keine gute Nahtstelle, verwickelte Aufrufer, versteckte Kopplung), halte ihn mit den Einzelheiten als Befund in `STAND.md` fest oder schlage dem Nutzer einen Plan vor (Skill `plan`). Wiederholt sich der Fehlertyp, trage einen Kandidaten ein (`register kandidat`, Skill `werkzeugbau`). Mache diese Empfehlung **nach** der Korrektur, nicht davor: Du weißt jetzt mehr als am Anfang.
+
+Grundlage: Matt Pocock (MIT), übersetzt und an hierarchie angepasst.

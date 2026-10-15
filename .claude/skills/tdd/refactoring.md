@@ -1,10 +1,10 @@
-# Refactor Candidates
+# Umbau-Kandidaten
 
-After TDD cycle, look for:
+Nach einem TDD-Zyklus (Umbau nur bei grünen Tests; danach die Testdatei, am Ende den UTS-Vollauf laufen lassen) suche nach:
 
-- **Duplication** → Extract function/class
-- **Long methods** → Break into private helpers (keep tests on public interface)
-- **Shallow modules** → Combine or deepen
-- **Feature envy** → Move logic to where data lives
-- **Primitive obsession** → Introduce value objects
-- **Existing code** the new code reveals as problematic
+- **Doppelungen** → Funktion oder Klasse herausziehen
+- **Lange Methoden** → in private Hilfsfunktionen zerlegen (Tests bleiben an der öffentlichen Schnittstelle)
+- **Flache Module** → zusammenlegen oder vertiefen
+- **Neid auf fremde Daten** („Feature Envy“: Logik arbeitet vor allem mit den Daten eines anderen Moduls) → Logik dorthin verlegen, wo die Daten liegen
+- **Grundtyp-Besessenheit** (Zahlen und Texte statt eigener kleiner Typen) → Wertobjekte einführen
+- **Vorhandener Code**, den der neue Code als problematisch zeigt
