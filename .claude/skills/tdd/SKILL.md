@@ -1,109 +1,135 @@
 ---
 name: tdd
-description: Test-driven development with red-green-refactor loop. Use when user wants to build features or fix bugs using TDD, mentions "red-green-refactor", wants integration tests, or asks for test-first development.
+description: "Testgetriebene Entwicklung (Test zuerst) mit dem Zyklus Rot-Grün-Umbau: Der Test kommt vor dem Code und liegt in der UTS. Nutze den Skill, wenn der Nutzer Funktionen oder Fehlerbehebungen testgetrieben bauen will, „red-green-refactor“, „Test zuerst“ oder Integrationstests nennt. Nicht für reine Textarbeit, nicht für Wegwerfprüfungen außerhalb der UTS."
 ---
 
-# Test-Driven Development
+# Testgetriebene Entwicklung (TDD)
 
-## Philosophy
+TDD heißt: erst ein Test, der fehlschlägt (rot), dann der kleinste Code, der ihn bestehen lässt (grün), dann aufräumen (Umbau, englisch „refactor“).
 
-**Core principle**: Tests should verify behavior through public interfaces, not implementation details. Code can change entirely; tests shouldn't.
+## Kernregel
 
-**Good tests** are integration-style: they exercise real code paths through public APIs. They describe _what_ the system does, not _how_ it does it. A good test reads like a specification - "user can checkout with valid cart" tells you exactly what capability exists. These tests survive refactors because they don't care about internal structure.
+**Test zuerst, und der Test liegt in der UTS.** Jeder Test ist eine Testdatei im Projekt (`*.test.mjs`, mit `node:test` und `node:assert`; hierarchie hat keine Abhängigkeiten), die die UTS (Unit-Test-Suite) ausführt. Keine Wegwerfprüfungen außerhalb der UTS.
 
-**Bad tests** are coupled to implementation. They mock internal collaborators, test private methods, or verify through external means (like querying a database directly instead of using the interface). The warning sign: your test breaks when you refactor, but behavior hasn't changed. If you rename an internal function and tests fail, those tests were testing implementation, not behavior.
+- Einzelner Lauf zum Arbeiten: `node .hierarchie/werkzeuge/uts.mjs --zu <datei>` (im Repo hierarchie `node werkzeuge/uts.mjs --zu <datei>`).
+- Abschluss: Vollauf `node .hierarchie/werkzeuge/uts.mjs --kurz` (im Repo hierarchie `node werkzeuge/uts.mjs --kurz`), Exit 0. „Geprüft“ gilt erst mit dem Namen der Testdatei und dieser Zeile.
 
-See [tests.md](tests.md) for examples and [mocking.md](mocking.md) for mocking guidelines.
+## Grundsatz
 
-## Anti-Pattern: Horizontal Slices
+**Kernprinzip**: Tests prüfen Verhalten über öffentliche Schnittstellen, nicht Umsetzungsdetails. Der Code darf sich komplett ändern, die Tests nicht.
 
-**DO NOT write all tests first, then all implementation.** This is "horizontal slicing" - treating RED as "write all tests" and GREEN as "write all code."
+**Gute Tests** sind integrationsartig: Sie durchlaufen echte Codepfade über die öffentliche Schnittstelle. Sie beschreiben, *was* das System tut, nicht *wie*. Ein guter Test liest sich wie eine Spezifikation: „Nutzer kann mit gültigem Warenkorb bestellen“ sagt genau, welche Fähigkeit es gibt. Solche Tests überleben Umbauten, weil ihnen der innere Aufbau egal ist.
 
-This produces **crap tests**:
+**Schlechte Tests** hängen an der Umsetzung. Sie ersetzen interne Mitspieler durch Attrappen (Mocks), testen private Methoden oder prüfen über Umwege (etwa direkt in der Datenbank, statt über die Schnittstelle). Warnzeichen: Der Test bricht beim Umbau, obwohl sich das Verhalten nicht geändert hat. Scheitern Tests, wenn du eine interne Funktion umbenennst, haben sie die Umsetzung getestet, nicht das Verhalten.
 
-- Tests written in bulk test _imagined_ behavior, not _actual_ behavior
-- You end up testing the _shape_ of things (data structures, function signatures) rather than user-facing behavior
-- Tests become insensitive to real changes - they pass when behavior breaks, fail when behavior is fine
-- You outrun your headlights, committing to test structure before understanding the implementation
+Beispiele in [tests.md](tests.md), Hinweise zu Attrappen in [mocking.md](mocking.md).
 
-**Correct approach**: Vertical slices via tracer bullets. One test → one implementation → repeat. Each test responds to what you learned from the previous cycle. Because you just wrote the code, you know exactly what behavior matters and how to verify it.
+## Anti-Muster: waagerechte Scheiben
+
+**Nicht erst alle Tests schreiben, dann den ganzen Code.** Das ist „waagerechtes Schneiden“: ROT wird als „alle Tests schreiben“ missverstanden, GRÜN als „allen Code schreiben“.
+
+Das erzeugt **schlechte Tests**:
+
+- Auf Vorrat geschriebene Tests prüfen *vorgestelltes* Verhalten, nicht *tatsächliches*.
+- Du testest die *Form* der Dinge (Datenstrukturen, Funktionsköpfe) statt des Verhaltens.
+- Die Tests werden unempfindlich gegen echte Änderungen: Sie bestehen, wenn das Verhalten bricht, und scheitern, wenn alles in Ordnung ist.
+- Du läufst deinen Scheinwerfern davon und legst die Teststruktur fest, bevor du die Umsetzung verstehst.
+
+**Richtig**: senkrechte Scheiben als Durchstich („Tracer Bullet“, Leuchtspurgeschoss). Ein Test → eine Umsetzung → wiederholen. Jeder Test antwortet auf das, was der vorige Zyklus gelehrt hat. Weil du den Code gerade geschrieben hast, weißt du genau, welches Verhalten zählt und wie man es prüft.
 
 ```
-WRONG (horizontal):
-  RED:   test1, test2, test3, test4, test5
-  GREEN: impl1, impl2, impl3, impl4, impl5
+FALSCH (waagerecht):
+  ROT:   Test1, Test2, Test3, Test4, Test5
+  GRÜN:  Code1, Code2, Code3, Code4, Code5
 
-RIGHT (vertical):
-  RED→GREEN: test1→impl1
-  RED→GREEN: test2→impl2
-  RED→GREEN: test3→impl3
+RICHTIG (senkrecht):
+  ROT→GRÜN: Test1→Code1
+  ROT→GRÜN: Test2→Code2
+  ROT→GRÜN: Test3→Code3
   ...
 ```
 
-## Workflow
+## Ablauf
 
-### 1. Planning
+### 1. Planen
 
-When exploring the codebase, use the project's domain glossary so that test names and interface vocabulary match the project's language, and respect ADRs in the area you're touching.
+Planen geschieht gemeinsam mit dem Nutzer, umgesetzt wird erst nach seiner Freigabe. Beim Erkunden des Projekts helfen die Begriffe aus `STAND.md` und den Plänen, damit Testnamen und Schnittstellenwörter zur Sprache des Projekts passen; getroffene Entscheidungen in `STAND.md` werden beachtet.
 
-Before writing any code:
+Bevor Code entsteht:
 
-- [ ] Confirm with user what interface changes are needed
-- [ ] Confirm with user which behaviors to test (prioritize)
-- [ ] Identify opportunities for [deep modules](deep-modules.md) (small interface, deep implementation)
-- [ ] Design interfaces for [testability](interface-design.md)
-- [ ] List the behaviors to test (not implementation steps)
-- [ ] Get user approval on the plan
+- [ ] Mit dem Nutzer klären, welche Schnittstellenänderungen nötig sind
+- [ ] Mit dem Nutzer klären, welche Verhalten getestet werden (nach Wichtigkeit)
+- [ ] Chancen für [tiefe Module](deep-modules.md) suchen (kleine Schnittstelle, viel dahinter)
+- [ ] Schnittstellen [testbar](interface-design.md) entwerfen
+- [ ] Die zu testenden Verhalten auflisten (keine Umsetzungsschritte)
+- [ ] Freigabe des Nutzers für den Plan holen
 
-Ask: "What should the public interface look like? Which behaviors are most important to test?"
+Frage: „Wie soll die öffentliche Schnittstelle aussehen? Welche Verhalten sind am wichtigsten?“
 
-**You can't test everything.** Confirm with the user exactly which behaviors matter most. Focus testing effort on critical paths and complex logic, not every possible edge case.
+**Du kannst nicht alles testen.** Kläre mit dem Nutzer, welche Verhalten am meisten zählen. Lege den Testaufwand auf kritische Pfade und knifflige Logik, nicht auf jeden Randfall.
 
-### 2. Tracer Bullet
+### 2. Durchstich
 
-Write ONE test that confirms ONE thing about the system:
-
-```
-RED:   Write test for first behavior → test fails
-GREEN: Write minimal code to pass → test passes
-```
-
-This is your tracer bullet - proves the path works end-to-end.
-
-### 3. Incremental Loop
-
-For each remaining behavior:
+Schreibe EINEN Test, der EINE Sache am System bestätigt:
 
 ```
-RED:   Write next test → fails
-GREEN: Minimal code to pass → passes
+ROT:   Test für das erste Verhalten schreiben → Test schlägt fehl
+GRÜN:  Kleinsten Code schreiben, der ihn besteht → Test besteht
 ```
 
-Rules:
+Das ist dein Durchstich: Er beweist, dass der Weg von Anfang bis Ende trägt. Kleines Beispiel mit den Bordmitteln von Node:
 
-- One test at a time
-- Only enough code to pass current test
-- Don't anticipate future tests
-- Keep tests focused on observable behavior
+```js
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { summe } from '../werkzeuge/rechnen.mjs';
 
-### 4. Refactor
+test('summe addiert die Preise eines Warenkorbs', () => {
+  assert.equal(summe([{ preis: 2 }, { preis: 3 }]), 5);
+});
+```
 
-After all tests pass, look for [refactor candidates](refactoring.md):
+Der Test schlägt fehl (rot), weil `summe` noch fehlt. Erst dann entsteht der Code.
 
-- [ ] Extract duplication
-- [ ] Deepen modules (move complexity behind simple interfaces)
-- [ ] Apply SOLID principles where natural
-- [ ] Consider what new code reveals about existing code
-- [ ] Run tests after each refactor step
+### 3. Schrittweise Schleife
 
-**Never refactor while RED.** Get to GREEN first.
-
-## Checklist Per Cycle
+Für jedes weitere Verhalten:
 
 ```
-[ ] Test describes behavior, not implementation
-[ ] Test uses public interface only
-[ ] Test would survive internal refactor
-[ ] Code is minimal for this test
-[ ] No speculative features added
+ROT:   Nächsten Test schreiben → schlägt fehl
+GRÜN:  Kleinster Code zum Bestehen → besteht
 ```
+
+Regeln:
+
+- Immer nur ein Test
+- Nur so viel Code, wie der aktuelle Test braucht
+- Spätere Tests nicht vorwegnehmen
+- Tests auf beobachtbares Verhalten richten
+- Nach jedem Zyklus die Testdatei mit `--zu <datei>` laufen lassen
+
+### 4. Umbauen
+
+Sind alle Tests grün, suche [Umbau-Kandidaten](refactoring.md):
+
+- [ ] Doppelungen herausziehen
+- [ ] Module vertiefen (Komplexität hinter einfache Schnittstellen verlegen)
+- [ ] SOLID-Prinzipien (bekannte Entwurfsregeln für klare Verantwortung) anwenden, wo sie natürlich passen
+- [ ] Überlegen, was der neue Code über den vorhandenen verrät
+- [ ] Nach jedem Umbauschritt die Tests laufen lassen
+- [ ] Am Ende den UTS-Vollauf (`uts --kurz`, Exit 0)
+
+**Nie umbauen, solange ein Test ROT ist.** Erst GRÜN erreichen.
+
+## Prüfliste je Zyklus
+
+```
+[ ] Test beschreibt Verhalten, nicht Umsetzung
+[ ] Test nutzt nur die öffentliche Schnittstelle
+[ ] Test würde einen inneren Umbau überleben
+[ ] Test liegt in der UTS (Testdatei im Projekt)
+[ ] Code ist minimal für diesen Test
+[ ] Keine vorsorglichen Funktionen ergänzt
+```
+
+Grundlage: Matt Pocock (MIT), übersetzt und an hierarchie angepasst.

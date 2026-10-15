@@ -1,46 +1,40 @@
 ---
 name: ponytail-audit
-description: >
-  Whole-repo audit for over-engineering. Like ponytail-review, but scans the
-  entire codebase instead of a diff: a ranked list of what to delete, simplify,
-  or replace with stdlib/native equivalents. Use when the user says "audit this
-  codebase", "audit for over-engineering", "what can I delete from this repo",
-  "find bloat", "ponytail-audit", or "/ponytail-audit". One-shot report, does
-  not apply fixes.
+description: "Prüft das ganze Projekt auf Überbau, statt nur eine Änderung: eine nach Größe geordnete Liste dessen, was gelöscht, vereinfacht oder durch Standardbibliothek und Plattform-Bordmittel ersetzt werden kann. Nutze den Skill, wenn der Nutzer „das Projekt auf Überbau prüfen“, „was kann ich löschen“, „Bloat finden“ sagt oder /ponytail-audit aufruft. Einmaliger Bericht, ändert nichts. Nicht für eine einzelne Änderung (dafür ponytail-review), nicht für Fehler, Sicherheit oder Geschwindigkeit."
 ---
 
-ponytail-review, repo-wide. Scan the whole tree instead of a diff. Rank
-findings biggest cut first.
+# Ponytail-Audit
+
+Wie ponytail-review, aber für das ganze Projekt statt für eine Änderung. Durchsuche den gesamten Baum und ordne die Befunde nach Größe, größter Schnitt zuerst.
 
 ## Tags
 
-Same as ponytail-review:
+Wie bei ponytail-review:
 
-- `delete:` dead code, unused flexibility, speculative feature. Replacement: nothing.
-- `stdlib:` hand-rolled thing the standard library ships. Name the function.
-- `native:` dependency or code doing what the platform already does. Name the feature.
-- `reuse:` equivalent helper, util, or pattern already in this repo. Name the path.
-- `yagni:` abstraction with one implementation, config nobody sets, layer with one caller.
-- `shrink:` same logic, fewer lines. Show the shorter form.
+- `delete:` toter Code, ungenutzte Flexibilität, vorsorgliche Funktion. Ersatz: nichts.
+- `stdlib:` selbst gebaut, was die Standardbibliothek mitbringt. Funktion nennen.
+- `native:` Abhängigkeit oder Code, der tut, was die Plattform schon kann. Funktion nennen.
+- `reuse:` gleichwertige Hilfsfunktion oder gleiches Muster liegt schon im Projekt. Pfad nennen.
+- `yagni:` Abstraktion mit einer Umsetzung, Einstellung, die niemand setzt, Schicht mit einem Aufrufer. (YAGNI: du wirst es nicht brauchen.)
+- `shrink:` gleiche Logik, weniger Zeilen. Kürzere Form zeigen.
+- `werkzeug:` wiederholter, regelbasierter Ablauf. Ersatz: Werkzeug statt Code oder Prompt (Skill `werkzeugbau`; sinnvoll als Kandidat mit `register kandidat`).
 
-## Hunt
+## Suche
 
-Deps the stdlib or platform already ships, single-implementation interfaces,
-factories with one product, wrappers that only delegate, files exporting one
-thing, dead flags and config, hand-rolled stdlib, helpers duplicating an
-equivalent that already lives in this repo.
-Before emitting `delete:`, grep the whole tree for the symbol, including tests,
-fixtures and string or dynamic references.
+Abhängigkeiten, die Standardbibliothek oder Plattform schon liefern; Schnittstellen mit einer Umsetzung; Fabriken mit einem Produkt; Hüllen, die nur weiterreichen; Dateien, die nur eine Sache ausführen; tote Schalter und Einstellungen; selbst gebaute Standardfunktionen; Hilfsfunktionen, die ein vorhandenes Gegenstück doppeln.
 
-## Output
+Vor jedem `delete:` den ganzen Baum nach dem Namen durchsuchen, auch Tests, Testdaten sowie Verweise als Text oder dynamisch gebildete Namen.
 
-One line per finding, numbered and ranked: `<N>. <tag> <what to cut>. <replacement>. [path]`,
-so the user can say "fix 2 and 5".
-End with `net: -<N> lines, -<M> deps possible.` Nothing to cut: `Lean already. Ship.`
+## Ausgabe
 
-## Boundaries
+Eine Zeile je Befund, nummeriert und geordnet: `<N>. <Tag> <was weg kann>. <Ersatz>. Grund: <warum>. [Pfad]`, damit der Nutzer „2 und 5 beheben“ sagen kann. Zum Schluss `netto: -<N> Zeilen, -<M> Abhängigkeiten möglich.` Gibt es nichts zu schneiden: `Schon schlank. Weiter.`
 
-Scope: over-engineering and complexity only. Correctness bugs, security holes,
-and performance are explicitly out of scope. Route them to a normal review
-pass. Lists findings, applies nothing. One-shot.
-"stop ponytail-audit" or "normal mode" to revert.
+## Begründung und Umgang mit Befunden
+
+Jeder Befund nennt seinen Grund, also die echte Ursache des Überbaus. Ein Befund ohne belegbaren Grund wird gestrichen. Der Bericht ändert nichts. Danach gilt: Was eine echte Ursache hat, wird behoben (nach Freigabe des Nutzers, bei vielen Befunden als Plan mit `plan neu`, Skill `plan`; Prüfung der Behebung über die UTS). Was nicht behoben wird, bekommt den Grund dazu, warum es bleibt.
+
+## Grenzen
+
+Nur Überbau und Komplexität. Fehler, Sicherheitslücken und Geschwindigkeit gehören in eine normale Prüfung. Ein einzelner Testfall in der UTS ist das Minimum von ponytail, nie zum Löschen vorschlagen. Listet Befunde, wendet nichts an, einmalig. „stop ponytail-audit“ oder „normaler Modus“ schaltet es ab.
+
+Grundlage: DietrichGebert/ponytail (MIT), übersetzt und an hierarchie angepasst.

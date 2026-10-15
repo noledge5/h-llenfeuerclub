@@ -1,61 +1,63 @@
-# Good and Bad Tests
+# Gute und schlechte Tests
 
-## Good Tests
+Alle Tests liegen in der UTS (Testdatei im Projekt, `node:test` und `node:assert`).
 
-**Integration-style**: Test through real interfaces, not mocks of internal parts.
+## Gute Tests
 
-```typescript
-// GOOD: Tests observable behavior
-test("user can checkout with valid cart", async () => {
-  const cart = createCart();
-  cart.add(product);
-  const result = await checkout(cart, paymentMethod);
-  expect(result.status).toBe("confirmed");
+**Integrationsartig**: über echte Schnittstellen testen, nicht über Attrappen innerer Teile.
+
+```js
+// GUT: prüft beobachtbares Verhalten
+test('Nutzer kann mit gültigem Warenkorb bestellen', async () => {
+  const korb = erzeugeKorb();
+  korb.hinzufuegen(produkt);
+  const ergebnis = await bestellen(korb, zahlungsart);
+  assert.equal(ergebnis.status, 'bestaetigt');
 });
 ```
 
-Characteristics:
+Merkmale:
 
-- Tests behavior users/callers care about
-- Uses public API only
-- Survives internal refactors
-- Describes WHAT, not HOW
-- One logical assertion per test
+- Prüft Verhalten, das Nutzer oder Aufrufer interessiert
+- Nutzt nur die öffentliche Schnittstelle
+- Überlebt innere Umbauten
+- Beschreibt WAS, nicht WIE
+- Eine logische Aussage je Test
 
-## Bad Tests
+## Schlechte Tests
 
-**Implementation-detail tests**: Coupled to internal structure.
+**Umsetzungsdetail-Tests**: hängen am inneren Aufbau.
 
-```typescript
-// BAD: Tests implementation details
-test("checkout calls paymentService.process", async () => {
-  const mockPayment = jest.mock(paymentService);
-  await checkout(cart, payment);
-  expect(mockPayment.process).toHaveBeenCalledWith(cart.total);
+```js
+// SCHLECHT: prüft Umsetzungsdetails
+test('bestellen ruft zahlungsdienst.verarbeite auf', async (t) => {
+  const attrappe = t.mock.method(zahlungsdienst, 'verarbeite');
+  await bestellen(korb, zahlung);
+  assert.deepEqual(attrappe.mock.calls[0].arguments, [korb.summe]);
 });
 ```
 
-Red flags:
+Warnzeichen:
 
-- Mocking internal collaborators
-- Testing private methods
-- Asserting on call counts/order
-- Test breaks when refactoring without behavior change
-- Test name describes HOW not WHAT
-- Verifying through external means instead of interface
+- Interne Mitspieler werden durch Attrappen ersetzt
+- Private Methoden werden getestet
+- Aufrufzahlen oder Reihenfolge werden geprüft
+- Der Test bricht beim Umbau ohne Verhaltensänderung
+- Der Testname beschreibt WIE statt WAS
+- Es wird über Umwege geprüft statt über die Schnittstelle
 
-```typescript
-// BAD: Bypasses interface to verify
-test("createUser saves to database", async () => {
-  await createUser({ name: "Alice" });
-  const row = await db.query("SELECT * FROM users WHERE name = ?", ["Alice"]);
-  expect(row).toBeDefined();
+```js
+// SCHLECHT: umgeht die Schnittstelle
+test('erzeugeNutzer speichert in der Datenbank', async () => {
+  await erzeugeNutzer({ name: 'Alice' });
+  const zeile = await db.abfrage('SELECT * FROM nutzer WHERE name = ?', ['Alice']);
+  assert.ok(zeile);
 });
 
-// GOOD: Verifies through interface
-test("createUser makes user retrievable", async () => {
-  const user = await createUser({ name: "Alice" });
-  const retrieved = await getUser(user.id);
-  expect(retrieved.name).toBe("Alice");
+// GUT: prüft über die Schnittstelle
+test('erzeugeNutzer macht den Nutzer abrufbar', async () => {
+  const nutzer = await erzeugeNutzer({ name: 'Alice' });
+  const geholt = await holeNutzer(nutzer.id);
+  assert.equal(geholt.name, 'Alice');
 });
 ```

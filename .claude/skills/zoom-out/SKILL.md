@@ -1,7 +1,12 @@
 ---
 name: zoom-out
-description: Tell the agent to zoom out and give broader context or a higher-level perspective. Use when you're unfamiliar with a section of code or need to understand how it fits into the bigger picture.
-disable-model-invocation: true
+description: "Geht eine Abstraktionsebene höher und liefert den größeren Zusammenhang: eine Karte der relevanten Module und ihrer Aufrufer. Nutze den Skill nur auf ausdrücklichen Wunsch, wenn sich der Nutzer in einem Codebereich nicht auskennt oder verstehen will, wie er ins Gesamtbild passt (zum Beispiel „zoom out“, „gib mir den Überblick“). Nicht für Fehlersuche (dafür diagnose) und nicht für Änderungen."
 ---
 
-I don't know this area of code well. Go up a layer of abstraction. Give me a map of all the relevant modules and callers, using the project's domain glossary vocabulary.
+# Zoom out
+
+Ich kenne diesen Bereich des Codes nicht gut. Geh eine Abstraktionsebene höher. Gib mir eine Karte aller relevanten Module und ihrer Aufrufer, in den Begriffen des Projekts (Wörter aus `STAND.md`, README, Plänen und vorhandenen Namen; die Werkzeuge zeigt `register`).
+
+Die Karte ist kurz: wer ruft wen auf, wo liegen die Daten, was gehört zusammen. Fachwörter beim ersten Vorkommen kurz erklären. Es wird nichts geändert.
+
+Grundlage: Matt Pocock (MIT), übersetzt und an hierarchie angepasst.
