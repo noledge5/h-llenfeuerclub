@@ -1,16 +1,5 @@
 {
   "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.hierarchie/werkzeuge/hook-sitzungsstart.mjs\"",
-            "timeout": 300
-          }
-        ]
-      }
-    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write|MultiEdit",
@@ -19,11 +8,6 @@
             "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-after-edit.sh",
             "timeout": 120
-          },
-          {
-            "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.hierarchie/werkzeuge/hook-nach-aenderung.mjs\"",
-            "timeout": 60
           }
         ]
       }
@@ -55,8 +39,5 @@
       "mcp__Supabase__pause_project",
       "mcp__Supabase__restore_project"
     ]
-  },
-  "enabledPlugins": {
-    "hierarchie@hierarchie": false
   }
 }
